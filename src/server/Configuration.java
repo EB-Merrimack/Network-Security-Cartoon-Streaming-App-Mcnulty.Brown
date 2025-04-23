@@ -139,7 +139,7 @@ public class Configuration implements JSONSerializable
     obj.put("port", port);
     obj.put("debug", doDebug);
     obj.put("users-file", usersFile);
-    obj.put("board-file", boardFile);
+    obj.put("VideoDashboard-file", boardFile);
     obj.put("keystore-file", keystoreFile);
     obj.put("keystore-pass", keystorePass);
 

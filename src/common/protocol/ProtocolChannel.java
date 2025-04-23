@@ -138,10 +138,6 @@ import java.io.IOException;
       System.out.println(msg);
    }
 
-   public StatusMessage sendMessage(Class<StatusMessage> class1) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'sendMessage'");
-   }
 
 
  }
