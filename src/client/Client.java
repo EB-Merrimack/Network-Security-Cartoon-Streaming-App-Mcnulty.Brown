@@ -40,6 +40,8 @@ public class Client {
     private static String message;
     private static String privKey;
     private static NonceCache nonceCache;
+    private static String searchQuery;
+
 
     private static final Objects mapper = new Objects();
 
@@ -75,7 +77,7 @@ public class Client {
         }
 
         OptionParser parser;
-        LongOption[] opts = new LongOption[8];
+        LongOption[] opts = new LongOption[9];
         opts[0] = new LongOption("create", false, 'c');
         opts[1] = new LongOption("post", true, 'o');
         opts[2] = new LongOption("get", false, 'g');
@@ -84,10 +86,11 @@ public class Client {
         opts[5] = new LongOption("user", true, 'u');
         opts[6] = new LongOption("host", true, 'h');
         opts[7] = new LongOption("port", true, 'p');
+        opts[8] = new LongOption("search", true, 's');
 
         parser = new OptionParser(args);
         parser.setLongOpts(opts);
-        parser.setOptString("cgo:r:k:u:h:p:");
+        parser.setOptString("cgo:r:k:u:h:p:s:");
 
         Tuple<Character, String> currOpt;
 
@@ -110,6 +113,7 @@ public class Client {
                         usage();
                     }
                     break;
+                case 's': searchQuery = currOpt.getSecond(); break;
                 case '?':
                 default: usage(); break;
             }
