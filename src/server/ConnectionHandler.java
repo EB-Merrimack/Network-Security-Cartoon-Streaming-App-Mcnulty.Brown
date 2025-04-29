@@ -40,7 +40,6 @@ public class ConnectionHandler implements Runnable {
     public ConnectionHandler(Socket sock, boolean doDebug, String serviceName, String secret, NonceCache nonceCache) throws IllegalArgumentException, IOException
     {
         this.channel = new ProtocolChannel(sock);
-        this.channel.addMessageType(new common.protocol.user_creation.CreateMessage());
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
         this.channel.addMessageType(new AuthenticateMessage());
       
@@ -84,7 +83,6 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[DEBUG] Received message: " + msg);
             if (msg.getType().equals("Create")) {
                 // Handle CreateMessage 
-                handleCreateMessage(msg);
                 return;
             } else if (msg.getType().equals("authenticate")) {
             boolean success = AuthenticationHandler.authenticate((AuthenticateMessage) msg);
@@ -131,32 +129,4 @@ public class ConnectionHandler implements Runnable {
          * 
          * @param msg the CreateMessage received from the client
          */
-    private void handleCreateMessage(Message msg) {
-        try {
-            System.out.println("[SERVER] Handling CreateMessage");
-    
-            // Safe cast
-            common.protocol.user_creation.CreateMessage createMsg = 
-                (common.protocol.user_creation.CreateMessage) msg;
-    
-            String username = createMsg.getUsername();
-            String password = createMsg.getPassword();
-            String publicKey = createMsg.getPublicKey();
-            String userfile = Configuration.getUsersFile();
-    
-            System.out.println("[SERVER] Creating account for: " + username);
-    
-            // Call account creation logic
-            common.protocol.messages.StatusMessage response =
-                common.protocol.user_creation.CreateAccount.createAccount(username, password, publicKey, userfile);
-    
-            // Send the response back to the client
-            channel.sendMessage(response);
-    
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-  
-    
-}
 }

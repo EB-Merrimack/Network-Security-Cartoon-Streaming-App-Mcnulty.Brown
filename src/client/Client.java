@@ -22,7 +22,7 @@ import org.bouncycastle.util.Objects;
 import common.protocol.Message;
 import common.protocol.ProtocolChannel;
 import common.protocol.messages.*;
-import common.protocol.user_creation.CreateMessage;
+
 import common.protocol.user_creation.UserCreationRequest;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
