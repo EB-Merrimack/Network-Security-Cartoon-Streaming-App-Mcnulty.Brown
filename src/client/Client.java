@@ -20,6 +20,9 @@ import common.protocol.Message;
 import common.protocol.ProtocolChannel;
 
 import common.protocol.messages.AuthenticateMessage;
+import common.protocol.messages.DownloadCompleteMessage;
+import common.protocol.messages.DownloadRequestMessage;
+import common.protocol.messages.FileChunkMessage;
 import common.protocol.messages.SearchRequestMessage;
 import common.protocol.messages.SearchResponseMessage;
 import common.protocol.messages.StatusMessage;
@@ -43,6 +46,8 @@ public class Client {
     private static String privKey;
     private static NonceCache nonceCache;
     private static String searchQuery;
+    private static String downloadFilename;
+
 
 
     private static final Objects mapper = new Objects();
@@ -55,6 +60,8 @@ public class Client {
         System.out.println("  client --create --user <user> --host <host> --port <portnum>");
         System.out.println("  client --post <msg> --user <user> --recvr <user> --host <host> --port <portnum>");
         System.out.println("  client --get --key <privkey> --user <user> --host <host> --port <portnum>");
+        System.out.println("  client --search <query> --user <user> --host <host> --port <port>");
+        System.out.println("  client --download <filename> --user <user> --host <host> --port <port>");
         System.out.println("options:");
         System.out.println("  -c, --create     Create a new account.");
         System.out.println("  -o, --post       Post a message.");
@@ -64,6 +71,7 @@ public class Client {
         System.out.println("  -u, --user       The username.");
         System.out.println("  -h, --host       The host name of the server.");
         System.out.println("  -p, --port       The port number for the server.");
+        System.out.println("  -s, --search     Search for a message");
         System.exit(1);
     }
 
@@ -79,7 +87,7 @@ public class Client {
         }
 
         OptionParser parser;
-        LongOption[] opts = new LongOption[9];
+        LongOption[] opts = new LongOption[10];
         opts[0] = new LongOption("create", false, 'c');
         opts[1] = new LongOption("post", true, 'o');
         opts[2] = new LongOption("get", false, 'g');
@@ -89,10 +97,12 @@ public class Client {
         opts[6] = new LongOption("host", true, 'h');
         opts[7] = new LongOption("port", true, 'p');
         opts[8] = new LongOption("search", true, 's');
+        opts[9] = new LongOption("download", true, 'd');
+
 
         parser = new OptionParser(args);
         parser.setLongOpts(opts);
-        parser.setOptString("cgo:r:k:u:h:p:s:");
+        parser.setOptString("cgo:r:k:u:h:p:s:d:");
 
         Tuple<Character, String> currOpt;
 
@@ -116,6 +126,7 @@ public class Client {
                     }
                     break;
                 case 's': searchQuery = currOpt.getSecond(); break;
+                case 'd': downloadFilename = currOpt.getSecond(); break;
                 case '?':
                 default: usage(); break;
             }
@@ -149,7 +160,10 @@ public class Client {
         }  else if (searchQuery != null) {
             System.out.println("Searching for: " + searchQuery);
             search(searchQuery);
-        } else {
+        } else if (downloadFilename != null) {
+            System.out.println("Downloading file: " + downloadFilename);
+            download(downloadFilename);
+        }else {
             System.err.println("Error: No valid action specified.");
             usage();
         } 
@@ -270,6 +284,64 @@ try {
 
         // Close channel
         channel.closeChannel();
+    }
+
+    public static void download(String filename) throws Exception {
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
+
+        ProtocolChannel channel = new ProtocolChannel(socket);
+
+        // Register message types
+        channel.addMessageType(new DownloadRequestMessage());
+        channel.addMessageType(new FileChunkMessage());
+        channel.addMessageType(new DownloadCompleteMessage());
+        channel.addMessageType(new StatusMessage());
+
+        // Send download request
+        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename);
+        channel.sendMessage(downloadMsg);
+
+        // Setup file output
+        java.io.FileOutputStream fileOut = new java.io.FileOutputStream(filename);
+
+        boolean finished = false;
+        int totalBytes = 0;
+
+        System.out.println("Starting download of " + filename + "...");
+
+        while (!finished) {
+            Message response = channel.receiveMessage();
+
+            if (response instanceof FileChunkMessage) {
+                FileChunkMessage chunk = (FileChunkMessage) response;
+                fileOut.write(chunk.getData());
+                totalBytes += chunk.getData().length;
+
+                System.out.println("Received chunk (" + chunk.getData().length + " bytes).");
+
+                if (chunk.isLastChunk()) {
+                    finished = true;
+                    System.out.println("Last chunk received.");
+                }
+            } else if (response instanceof DownloadCompleteMessage) {
+                System.out.println("Server signaled download complete.");
+                finished = true;
+            } else if (response instanceof StatusMessage) {
+                StatusMessage status = (StatusMessage) response;
+                System.out.println("[ERROR] Server reported: " + status.getPayload());
+                break;
+            } else {
+                System.out.println("[ERROR] Unexpected message during download: " + response);
+                break;
+            }
+        }
+
+        fileOut.close();
+        channel.closeChannel();
+
+        System.out.println("Download finished: " + filename + " (" + totalBytes + " bytes)");
     }
 
 
