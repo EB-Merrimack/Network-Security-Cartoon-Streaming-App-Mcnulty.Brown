@@ -9,15 +9,17 @@ public class CreateMessage implements Message {
     private String user;
     private String pass;
     private String pubkey;
+    private String encryptedAESKey;
 
     public CreateMessage() {
         
     }
 
-    public CreateMessage(String user, String pass, String pubkey) {
+    public CreateMessage(String user, String pass, String pubkey, String encryptedAESKey) {
         this.user = user;
         this.pass = pass;
         this.pubkey = pubkey;
+        this.encryptedAESKey = encryptedAESKey;
         System.out.println("[DEBUG] CreateMessage constructor called with user=" + user + ", pass=" + pass + ", pubkey=" + pubkey);
     }
 
@@ -48,6 +50,10 @@ public class CreateMessage implements Message {
         return pubkey;
     }
 
+    public String getEncryptedAESKey() {
+        return encryptedAESKey;
+    }
+
     /**
      * Deserialize a JSON object into a CreateMessage instance.
      *
@@ -69,6 +75,8 @@ public class CreateMessage implements Message {
         this.user = json.getString("user");
         this.pass = json.getString("pass");
         this.pubkey = json.getString("pubkey");
+        this.encryptedAESKey = json.getString("encryptedAESKey");
+
 
         System.out.println("[DEBUG] Deserialized CreateMessage: user=" + user + ", pass=" + pass + ", pubkey=" + pubkey);
     }
@@ -91,6 +99,7 @@ public class CreateMessage implements Message {
         obj.put("user", user);
         obj.put("pass", pass);
         obj.put("pubkey", pubkey);
+        obj.put("encryptedAESKey", encryptedAESKey);
         System.out.println("[DEBUG] Serialized CreateMessage: " + obj.toString());
         return obj;
     }
@@ -119,7 +128,8 @@ public class CreateMessage implements Message {
         String user = obj.getString("user");
         String pass = obj.getString("pass");
         String pubkey = obj.getString("pubkey");
+        String encryptedAESKey = obj.getString("encryptedAESKey");
         System.out.println("[DEBUG] Decoding CreateMessage with user=" + user + ", pass=" + pass + ", pubkey=" + pubkey);
-        return new CreateMessage(user, pass, pubkey);
+        return new CreateMessage(user, pass, pubkey, encryptedAESKey);
     }
 }

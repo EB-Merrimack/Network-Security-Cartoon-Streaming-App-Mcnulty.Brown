@@ -328,64 +328,63 @@ try {
         processArgs(args);
 
         if (create) {
+            Console console = System.console();
+            if (console == null) {
+                throw new IllegalStateException("Console not available. Please run in a real terminal.");
+            }
+    
             System.out.print("Enter a password: ");
-            String password = new String(System.console().readPassword());
-        
+            String password = new String(console.readPassword());
+    
+            // 1. Generate ElGamal public/private keypair
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ElGamal");
-            keyGen.initialize(512); //FOR TESTING
-            //keyGen.initialize(2048);
+            keyGen.initialize(512); // FOR TESTING; can go higher later
             KeyPair kp = keyGen.generateKeyPair();
-        
+    
+            // 2. Generate AES key for file decryption
+            javax.crypto.KeyGenerator aesGen = javax.crypto.KeyGenerator.getInstance("AES");
+            aesGen.init(128); // 128-bit AES
+            javax.crypto.SecretKey aesKey = aesGen.generateKey();
+    
+            // 3. Encrypt AES key with user's ElGamal public key
+            Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
+            elgCipher.init(Cipher.ENCRYPT_MODE, kp.getPublic());
+            byte[] encryptedAESKey = elgCipher.doFinal(aesKey.getEncoded());
+    
+            // 4. Encode keys for transport/storage
             String pubKeyEncoded = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
             String privKeyEncoded = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
-        
-        
+            String encryptedAESKeyB64 = Base64.getEncoder().encodeToString(encryptedAESKey);
+    
+            // 5. Start TLS connection to server
             SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
             SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-            
-            socket.startHandshake(); // 👈 force the TLS handshake now
-
-
+            socket.startHandshake();
+    
             channel = new ProtocolChannel(socket);
             channel.addMessageType(new StatusMessage());
-        
-            CreateMessage msg = new CreateMessage(user, password, pubKeyEncoded);
-            channel.sendMessage((Message) msg);
     
-            
-            // Receive the response
+            // 6. Send CreateMessage to server
+            CreateMessage msg = new CreateMessage(user, password, pubKeyEncoded, encryptedAESKeyB64);
+            channel.sendMessage(msg);
+    
+            // 7. Receive server response
             Message response = channel.receiveMessage();
             System.out.println("Received response: " + response);
-            
-            // Additional debug info for response handling
-            if (response != null) {
-                System.out.println("Response class: " + response.getClass().getSimpleName());
-                System.out.println("Response content: " + response.toString());
+    
+            if (response instanceof StatusMessage) {
+                StatusMessage status = (StatusMessage) response;
+                if (status.getStatus()) {
+                    System.out.println("Account created successfully.");
+                    System.out.println("Save your Private Key:\n" + privKeyEncoded);
+                    System.out.println("(Server may store your encrypted AES key separately.)");
+                } else {
+                    System.out.println("Failed to create account: " + status.getPayload());
+                }
             } else {
-                System.out.println("No response received.");
+                System.out.println("[ERROR] Unexpected response from server.");
             }
-            
-            if (!(response instanceof StatusMessage)) {
-                System.out.println("Unexpected response from server: " + response.getClass().getSimpleName());
-                channel.closeChannel();
-                return;
-            }
-            
-        
-            StatusMessage status = (StatusMessage) response;
-            if (status.getStatus()) {
-                System.out.println("Account created successfully.");
-                System.out.println("Private Key:\n" + privKeyEncoded);
-
-                @SuppressWarnings("static-access")
-                String totpKey = status.getPayload();
-                byte[] totpBytes = Base64.getDecoder().decode(totpKey);
-                String base32Totp = Base32.encodeToString(totpBytes, true); // no padding
-                System.out.println("Base 32 Key:\n" + base32Totp);
-            } else {
-                System.out.println("Failed to create account: ");
-            }
-        
+    
             channel.closeChannel();
         }
     }
