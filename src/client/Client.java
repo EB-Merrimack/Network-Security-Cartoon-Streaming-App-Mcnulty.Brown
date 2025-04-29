@@ -6,6 +6,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.util.Base64;
+import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.net.ssl.SSLSocket;
@@ -19,7 +20,11 @@ import common.protocol.Message;
 import common.protocol.ProtocolChannel;
 
 import common.protocol.messages.AuthenticateMessage;
-
+import common.protocol.messages.DownloadCompleteMessage;
+import common.protocol.messages.DownloadRequestMessage;
+import common.protocol.messages.FileChunkMessage;
+import common.protocol.messages.SearchRequestMessage;
+import common.protocol.messages.SearchResponseMessage;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_creation.CreateMessage;
 import merrimackutil.cli.LongOption;
@@ -34,12 +39,11 @@ public class Client {
     private static String host;
     private static int port;
     private static boolean create = false;
-    private static boolean post = false;
-    private static boolean get = false;
-    private static String recvr;
-    private static String message;
-    private static String privKey;
     private static NonceCache nonceCache;
+    private static String searchQuery;
+    private static String downloadFilename;
+
+
 
     private static final Objects mapper = new Objects();
 
@@ -49,17 +53,15 @@ public class Client {
     public static void usage() {
         System.out.println("usage:");
         System.out.println("  client --create --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --post <msg> --user <user> --recvr <user> --host <host> --port <portnum>");
-        System.out.println("  client --get --key <privkey> --user <user> --host <host> --port <portnum>");
+        System.out.println("  client --search <query> --user <user> --host <host> --port <port>");
+        System.out.println("  client --download <filename> --user <user> --host <host> --port <port>");
         System.out.println("options:");
         System.out.println("  -c, --create     Create a new account.");
-        System.out.println("  -o, --post       Post a message.");
-        System.out.println("  -g, --get        Get all posts.");
-        System.out.println("  -r, --recvr      The message receiver.");
-        System.out.println("  -k, --key        The private key.");
         System.out.println("  -u, --user       The username.");
         System.out.println("  -h, --host       The host name of the server.");
         System.out.println("  -p, --port       The port number for the server.");
+        System.out.println("  -s, --search     Search for a message");
+        System.out.println("  -d, --download   Download the file");
         System.exit(1);
     }
 
@@ -75,19 +77,18 @@ public class Client {
         }
 
         OptionParser parser;
-        LongOption[] opts = new LongOption[8];
+        LongOption[] opts = new LongOption[6];
         opts[0] = new LongOption("create", false, 'c');
-        opts[1] = new LongOption("post", true, 'o');
-        opts[2] = new LongOption("get", false, 'g');
-        opts[3] = new LongOption("recvr", true, 'r');
-        opts[4] = new LongOption("key", true, 'k');
-        opts[5] = new LongOption("user", true, 'u');
-        opts[6] = new LongOption("host", true, 'h');
-        opts[7] = new LongOption("port", true, 'p');
+        opts[1] = new LongOption("user", true, 'u');
+        opts[2] = new LongOption("host", true, 'h');
+        opts[3] = new LongOption("port", true, 'p');
+        opts[4] = new LongOption("search", true, 's');
+        opts[5] = new LongOption("download", true, 'd');
+
 
         parser = new OptionParser(args);
         parser.setLongOpts(opts);
-        parser.setOptString("cgo:r:k:u:h:p:");
+        parser.setOptString("cu:h:p:s:d:");
 
         Tuple<Character, String> currOpt;
 
@@ -96,10 +97,6 @@ public class Client {
 
             switch (currOpt.getFirst()) {
                 case 'c': create = true; break;
-                case 'o': post = true; message = currOpt.getSecond(); break;
-                case 'g': get = true; break;
-                case 'r': recvr = currOpt.getSecond(); break;
-                case 'k': privKey = currOpt.getSecond(); break;
                 case 'u': user = currOpt.getSecond(); break;
                 case 'h': host = currOpt.getSecond(); break;
                 case 'p':
@@ -110,6 +107,8 @@ public class Client {
                         usage();
                     }
                     break;
+                case 's': searchQuery = currOpt.getSecond(); break;
+                case 'd': downloadFilename = currOpt.getSecond(); break;
                 case '?':
                 default: usage(); break;
             }
@@ -123,29 +122,16 @@ public class Client {
             }
             System.out.println("Creating account for user: " + user);
             // Create logic runs in main()
-        } else if (post) {
-            if (user == null || host == null || port == 0 || recvr == null || message == null) {
-                System.err.println("Error: Missing required arguments for --post.");
-                usage();
-            }
-            if (!authenticateUser()) {
-                System.out.println("Authentication failed.");
-                return;
-            }
-            System.out.println("Authenticated.");
-            System.out.println("Posting message from " + user + " to " + recvr + ": " + message);
-        
-            // TLS and send message
-            SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-            SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-            socket.startHandshake();
-        
-           
-            
-        }  else {
+        } else if (searchQuery != null) {
+            System.out.println("Searching for: " + searchQuery);
+            search(searchQuery);
+        } else if (downloadFilename != null) {
+            System.out.println("Downloading file: " + downloadFilename);
+            download(downloadFilename);
+        }else {
             System.err.println("Error: No valid action specified.");
             usage();
-        }
+        } 
     }
 
     /**
@@ -212,11 +198,115 @@ try {
     StatusMessage status = (StatusMessage) response;
     
     return status.getStatus(); // true = success
-} catch (Exception e) {
-    e.printStackTrace();
-    System.out.println("[ERROR] Exception during TLS connection or message processing: " + e.getMessage());
-    return false;
-}
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("[ERROR] Exception during TLS connection or message processing: " + e.getMessage());
+            return false;
+        }
+    }
+
+
+    // Search method for messages
+    public static void search(String query) throws Exception {
+        // Start TLS connection
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
+
+        // Create protocol channel
+        ProtocolChannel channel = new ProtocolChannel(socket);
+
+        // Register relevant message types
+        channel.addMessageType(new SearchRequestMessage());
+        channel.addMessageType(new SearchResponseMessage());
+        channel.addMessageType(new StatusMessage()); // just in case server errors
+
+        // Send search request
+        SearchRequestMessage searchMsg = new SearchRequestMessage(query);
+        channel.sendMessage(searchMsg);
+
+        // Wait for response
+        Message response = channel.receiveMessage();
+
+        if (response instanceof SearchResponseMessage) {
+            SearchResponseMessage resp = (SearchResponseMessage) response;
+            List<String> files = resp.getFiles();
+
+            if (files.isEmpty()) {
+                System.out.println("No matching content found.");
+            } else {
+                System.out.println("Search results:");
+                for (String file : files) {
+                    System.out.println(" - " + file);
+                }
+            }
+        } else if (response instanceof StatusMessage) {
+            StatusMessage status = (StatusMessage) response;
+            System.out.println("Server error: " + status.getPayload());
+        } else {
+            System.out.println("Unexpected response: " + response);
+        }
+
+        // Close channel
+        channel.closeChannel();
+    }
+
+    public static void download(String filename) throws Exception {
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
+
+        ProtocolChannel channel = new ProtocolChannel(socket);
+
+        // Register message types
+        channel.addMessageType(new DownloadRequestMessage());
+        channel.addMessageType(new FileChunkMessage());
+        channel.addMessageType(new DownloadCompleteMessage());
+        channel.addMessageType(new StatusMessage());
+
+        // Send download request
+        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename);
+        channel.sendMessage(downloadMsg);
+
+        // Setup file output
+        java.io.FileOutputStream fileOut = new java.io.FileOutputStream(filename);
+
+        boolean finished = false;
+        int totalBytes = 0;
+
+        System.out.println("Starting download of " + filename + "...");
+
+        while (!finished) {
+            Message response = channel.receiveMessage();
+
+            if (response instanceof FileChunkMessage) {
+                FileChunkMessage chunk = (FileChunkMessage) response;
+                fileOut.write(chunk.getData());
+                totalBytes += chunk.getData().length;
+
+                System.out.println("Received chunk (" + chunk.getData().length + " bytes).");
+
+                if (chunk.isLastChunk()) {
+                    finished = true;
+                    System.out.println("Last chunk received.");
+                }
+            } else if (response instanceof DownloadCompleteMessage) {
+                System.out.println("Server signaled download complete.");
+                finished = true;
+            } else if (response instanceof StatusMessage) {
+                StatusMessage status = (StatusMessage) response;
+                System.out.println("[ERROR] Server reported: " + status.getPayload());
+                break;
+            } else {
+                System.out.println("[ERROR] Unexpected message during download: " + response);
+                break;
+            }
+        }
+
+        fileOut.close();
+        channel.closeChannel();
+
+        System.out.println("Download finished: " + filename + " (" + totalBytes + " bytes)");
     }
 
 
