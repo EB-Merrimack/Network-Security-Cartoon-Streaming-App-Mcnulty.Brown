@@ -6,6 +6,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.util.Base64;
+import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.net.ssl.SSLSocket;
@@ -19,7 +20,8 @@ import common.protocol.Message;
 import common.protocol.ProtocolChannel;
 
 import common.protocol.messages.AuthenticateMessage;
-
+import common.protocol.messages.SearchRequestMessage;
+import common.protocol.messages.SearchResponseMessage;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_creation.CreateMessage;
 import merrimackutil.cli.LongOption;
@@ -143,13 +145,14 @@ public class Client {
             SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
             SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
             socket.startHandshake();
-        
-           
             
-        }  else {
+        }  else if (searchQuery != null) {
+            System.out.println("Searching for: " + searchQuery);
+            search(searchQuery);
+        } else {
             System.err.println("Error: No valid action specified.");
             usage();
-        }
+        } 
     }
 
     /**
@@ -216,11 +219,57 @@ try {
     StatusMessage status = (StatusMessage) response;
     
     return status.getStatus(); // true = success
-} catch (Exception e) {
-    e.printStackTrace();
-    System.out.println("[ERROR] Exception during TLS connection or message processing: " + e.getMessage());
-    return false;
-}
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("[ERROR] Exception during TLS connection or message processing: " + e.getMessage());
+            return false;
+        }
+    }
+
+
+    // Search method for messages
+    public static void search(String query) throws Exception {
+        // Start TLS connection
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
+
+        // Create protocol channel
+        ProtocolChannel channel = new ProtocolChannel(socket);
+
+        // Register relevant message types
+        channel.addMessageType(new SearchRequestMessage());
+        channel.addMessageType(new SearchResponseMessage());
+        channel.addMessageType(new StatusMessage()); // just in case server errors
+
+        // Send search request
+        SearchRequestMessage searchMsg = new SearchRequestMessage(query);
+        channel.sendMessage(searchMsg);
+
+        // Wait for response
+        Message response = channel.receiveMessage();
+
+        if (response instanceof SearchResponseMessage) {
+            SearchResponseMessage resp = (SearchResponseMessage) response;
+            List<String> files = resp.getFiles();
+
+            if (files.isEmpty()) {
+                System.out.println("No matching content found.");
+            } else {
+                System.out.println("Search results:");
+                for (String file : files) {
+                    System.out.println(" - " + file);
+                }
+            }
+        } else if (response instanceof StatusMessage) {
+            StatusMessage status = (StatusMessage) response;
+            System.out.println("Server error: " + status.getPayload());
+        } else {
+            System.out.println("Unexpected response: " + response);
+        }
+
+        // Close channel
+        channel.closeChannel();
     }
 
 
