@@ -36,6 +36,7 @@ public class Client {
     private static String host;
     private static int port;
     private static boolean create = false;
+    private static boolean login = false;
     private static String searchQuery;
     private static String downloadFilename;
     private static final Objects mapper = new Objects();
@@ -53,6 +54,7 @@ public class Client {
         System.out.println("  -p, --port       Server port number.");
         System.out.println("  -s, --search     Search for available videos.");
         System.out.println("  -d, --download   Download a video.");
+        System.out.println("  -l, --login      Login to an existing account.");
         System.exit(1);
     }
 
@@ -63,17 +65,18 @@ public class Client {
         }
 
         OptionParser parser;
-        LongOption[] opts = new LongOption[6];
+        LongOption[] opts = new LongOption[7];
         opts[0] = new LongOption("create", false, 'c');
         opts[1] = new LongOption("user", true, 'u');
         opts[2] = new LongOption("host", true, 'h');
         opts[3] = new LongOption("port", true, 'p');
         opts[4] = new LongOption("search", true, 's');
         opts[5] = new LongOption("download", true, 'd');
+        opts[6] = new LongOption("login", false, 'l');
 
         parser = new OptionParser(args);
         parser.setLongOpts(opts);
-        parser.setOptString("cu:h:p:s:d:");
+        parser.setOptString("cu:h:p:s:d:l:");
 
         Tuple<Character, String> currOpt;
         while (parser.getOptIdx() != args.length) {
@@ -86,6 +89,7 @@ public class Client {
                 case 'p': port = Integer.parseInt(currOpt.getSecond()); break;
                 case 's': searchQuery = currOpt.getSecond(); break;
                 case 'd': downloadFilename = currOpt.getSecond(); break;
+                case 'l': login = true; break;
                 case '?':
                 default: usage(); break;
             }
@@ -332,15 +336,17 @@ public class Client {
             }
     
             channel.closeChannel();
-        } else {
-            // --- Login + Menu Flow ---
-            if (!authenticateUser()) {
-                System.out.println("[ERROR] Authentication failed.");
-                System.exit(1);
+            } else {
+                if(login) {
+                    if (!authenticateUser()) {
+                        System.out.println("[ERROR] Authentication failed.");
+                        System.exit(1);
+                    } else {
+            
+                    System.out.println("[INFO] Login successful.");
+                    interactiveSession();
+                }
             }
-    
-            System.out.println("[INFO] Login successful.");
-            interactiveSession();
         }
     }
 }
