@@ -1,77 +1,63 @@
 package client;
 
 import java.io.Console;
-import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.util.Base64;
-import java.util.List;
+import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-
-import org.bouncycastle.util.Objects;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.security.Security;
-import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
+import java.util.List;
+import java.util.Scanner;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.Objects;
+
 import common.protocol.Message;
 import common.protocol.ProtocolChannel;
-
-import common.protocol.messages.AuthenticateMessage;
-import common.protocol.messages.DownloadCompleteMessage;
-import common.protocol.messages.DownloadRequestMessage;
-import common.protocol.messages.FileChunkMessage;
-import common.protocol.messages.SearchRequestMessage;
-import common.protocol.messages.SearchResponseMessage;
-import common.protocol.messages.StatusMessage;
+import common.protocol.messages.*;
 import common.protocol.user_creation.CreateMessage;
+import common.protocol.user_creation.UserCreationRequest;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
-import merrimackutil.codec.Base32;
 import merrimackutil.util.NonceCache;
 import merrimackutil.util.Tuple;
 
 public class Client {
+    // Global variables
     private static ProtocolChannel channel = null;
     private static String user;
     private static String host;
     private static int port;
     private static boolean create = false;
-    private static NonceCache nonceCache;
     private static String searchQuery;
     private static String downloadFilename;
-
-
-
     private static final Objects mapper = new Objects();
 
-    /**
-     * Prints the help menu.
-     */
+    // Print usage/help
     public static void usage() {
         System.out.println("usage:");
         System.out.println("  client --create --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --search <query> --user <user> --host <host> --port <port>");
-        System.out.println("  client --download <filename> --user <user> --host <host> --port <port>");
+        System.out.println("  client --search <query> --user <user> --host <host> --port <portnum>");
+        System.out.println("  client --download <filename> --user <user> --host <host> --port <portnum>");
         System.out.println("options:");
         System.out.println("  -c, --create     Create a new account.");
-        System.out.println("  -u, --user       The username.");
-        System.out.println("  -h, --host       The host name of the server.");
-        System.out.println("  -p, --port       The port number for the server.");
-        System.out.println("  -s, --search     Search for a message");
-        System.out.println("  -d, --download   Download the file");
+        System.out.println("  -u, --user       Username.");
+        System.out.println("  -h, --host       Server hostname.");
+        System.out.println("  -p, --port       Server port number.");
+        System.out.println("  -s, --search     Search for available videos.");
+        System.out.println("  -d, --download   Download a video.");
         System.exit(1);
     }
 
-    /**
-     * Process the command line arguments.
-     * @param args the array of command line arguments.
-     * @throws Exception if something goes wrong.
-     */
+    // Parse command-line arguments
     public static void processArgs(String[] args) throws Exception {
-     
         if (args.length == 0) {
             usage();
         }
@@ -85,13 +71,11 @@ public class Client {
         opts[4] = new LongOption("search", true, 's');
         opts[5] = new LongOption("download", true, 'd');
 
-
         parser = new OptionParser(args);
         parser.setLongOpts(opts);
         parser.setOptString("cu:h:p:s:d:");
 
         Tuple<Character, String> currOpt;
-
         while (parser.getOptIdx() != args.length) {
             currOpt = parser.getLongOpt(false);
 
@@ -99,139 +83,65 @@ public class Client {
                 case 'c': create = true; break;
                 case 'u': user = currOpt.getSecond(); break;
                 case 'h': host = currOpt.getSecond(); break;
-                case 'p':
-                    try {
-                        port = Integer.parseInt(currOpt.getSecond());
-                    } catch (NumberFormatException e) {
-                        System.err.println("Error: Invalid port number.");
-                        usage();
-                    }
-                    break;
+                case 'p': port = Integer.parseInt(currOpt.getSecond()); break;
                 case 's': searchQuery = currOpt.getSecond(); break;
                 case 'd': downloadFilename = currOpt.getSecond(); break;
                 case '?':
                 default: usage(); break;
             }
         }
-
-        // Validate and dispatch
-        if (create) {
-            if (user == null || host == null || port == 0) {
-                System.err.println("Error: Missing required arguments for --create.");
-                usage();
-            }
-            System.out.println("Creating account for user: " + user);
-            // Create logic runs in main()
-        } else if (searchQuery != null) {
-            System.out.println("Searching for: " + searchQuery);
-            search(searchQuery);
-        } else if (downloadFilename != null) {
-            System.out.println("Downloading file: " + downloadFilename);
-            download(downloadFilename);
-        }else {
-            System.err.println("Error: No valid action specified.");
-            usage();
-        } 
     }
 
-    /**
-     * Authenticate a user by prompting for a password and OTP, then
-     * performing a TLS handshake with the server, sending an AuthenticateMessage,
-     * and receiving a StatusMessage in response. If the status message is
-     * success, the function returns true; otherwise, it returns false.
-     * @return true if authentication is successful; false otherwise
-     * @throws Exception if an error occurs during TLS connection or message
-     * processing
-     */
+    // Authenticate user (username + password + OTP)
     private static boolean authenticateUser() throws Exception {
-            Console console = System.console();
-
-    if (console == null) {
-        throw new IllegalStateException("Console is not available. Make sure you're running from a terminal.");
-    }
-
-    // Hide password input
-    char[] passwordChars = console.readPassword("Enter password: ");
-    String password = new String(passwordChars);
-
-    // Show OTP input (normal)
-    String otp = console.readLine("Enter OTP: ");
-      
-// Start TLS
-try {
-   
-
-    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-  
-    socket.startHandshake();
-   
-
-    // Create protocol channel
-    channel = new ProtocolChannel(socket);
-    
-
-    // Register message types
-    channel.addMessageType(new StatusMessage());
-    channel.addMessageType(new AuthenticateMessage());
-  
-
-    // Prepare and send AuthenticateMessage
-    AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
-    
-
-    // Send authentication message
-    channel.sendMessage(authMsg);
-  
-
-    // Receive response
-    Message response = channel.receiveMessage();
-  
-
-    // Check the response type
-    if (!(response instanceof StatusMessage)) {
-        System.out.println("[ERROR] Unexpected response: " + response.getClass().getName());
-        return false;
-    }
-
-    // Process status message
-    StatusMessage status = (StatusMessage) response;
-    
-    return status.getStatus(); // true = success
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("[ERROR] Exception during TLS connection or message processing: " + e.getMessage());
-            return false;
+        Console console = System.console();
+        if (console == null) {
+            throw new IllegalStateException("Console is not available. Please run in a real terminal.");
         }
-    }
 
+        char[] passwordChars = console.readPassword("Enter password: ");
+        String password = new String(passwordChars);
 
-    // Search method for messages
-    public static void search(String query) throws Exception {
-        // Start TLS connection
+        String otp = console.readLine("Enter OTP: ");
+
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
 
-        // Create protocol channel
-        ProtocolChannel channel = new ProtocolChannel(socket);
+        channel = new ProtocolChannel(socket);
+        channel.addMessageType(new StatusMessage());
+        channel.addMessageType(new AuthenticateMessage());
 
-        // Register relevant message types
+        AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
+        channel.sendMessage(authMsg);
+
+        Message response = channel.receiveMessage();
+        if (!(response instanceof StatusMessage)) {
+            System.out.println("[ERROR] Unexpected response: " + response.getClass().getName());
+            return false;
+        }
+
+        StatusMessage status = (StatusMessage) response;
+        return status.getStatus();
+    }
+
+    // Search available videos
+    public static void search(String query) throws Exception {
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
+
+        ProtocolChannel channel = new ProtocolChannel(socket);
         channel.addMessageType(new SearchRequestMessage());
         channel.addMessageType(new SearchResponseMessage());
-        channel.addMessageType(new StatusMessage()); // just in case server errors
+        channel.addMessageType(new StatusMessage());
 
-        // Send search request
         SearchRequestMessage searchMsg = new SearchRequestMessage(query);
         channel.sendMessage(searchMsg);
 
-        // Wait for response
         Message response = channel.receiveMessage();
-
         if (response instanceof SearchResponseMessage) {
-            SearchResponseMessage resp = (SearchResponseMessage) response;
-            List<String> files = resp.getFiles();
-
+            List<String> files = ((SearchResponseMessage) response).getFiles();
             if (files.isEmpty()) {
                 System.out.println("No matching content found.");
             } else {
@@ -241,40 +151,33 @@ try {
                 }
             }
         } else if (response instanceof StatusMessage) {
-            StatusMessage status = (StatusMessage) response;
-            System.out.println("Server error: " + status.getPayload());
+            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
         } else {
-            System.out.println("Unexpected response: " + response);
+            System.out.println("[ERROR] Unexpected response: " + response);
         }
 
-        // Close channel
         channel.closeChannel();
     }
 
+    // Download file
     public static void download(String filename) throws Exception {
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
 
         ProtocolChannel channel = new ProtocolChannel(socket);
-
-        // Register message types
         channel.addMessageType(new DownloadRequestMessage());
         channel.addMessageType(new FileChunkMessage());
         channel.addMessageType(new DownloadCompleteMessage());
         channel.addMessageType(new StatusMessage());
 
-        // Send download request
         DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename);
         channel.sendMessage(downloadMsg);
 
-        // Setup file output
         java.io.FileOutputStream fileOut = new java.io.FileOutputStream(filename);
 
         boolean finished = false;
         int totalBytes = 0;
-
-        System.out.println("Starting download of " + filename + "...");
 
         while (!finished) {
             Message response = channel.receiveMessage();
@@ -283,51 +186,81 @@ try {
                 FileChunkMessage chunk = (FileChunkMessage) response;
                 fileOut.write(chunk.getData());
                 totalBytes += chunk.getData().length;
-
-                System.out.println("Received chunk (" + chunk.getData().length + " bytes).");
-
                 if (chunk.isLastChunk()) {
                     finished = true;
-                    System.out.println("Last chunk received.");
                 }
             } else if (response instanceof DownloadCompleteMessage) {
-                System.out.println("Server signaled download complete.");
                 finished = true;
             } else if (response instanceof StatusMessage) {
-                StatusMessage status = (StatusMessage) response;
-                System.out.println("[ERROR] Server reported: " + status.getPayload());
+                System.out.println("[ERROR] Server reported: " + ((StatusMessage) response).getPayload());
                 break;
             } else {
-                System.out.println("[ERROR] Unexpected message during download: " + response);
+                System.out.println("[ERROR] Unexpected response: " + response);
                 break;
             }
         }
 
         fileOut.close();
         channel.closeChannel();
-
         System.out.println("Download finished: " + filename + " (" + totalBytes + " bytes)");
     }
 
+    // Create post login panel
+    public static void interactiveSession() throws Exception {
+        Scanner scanner = new Scanner(System.in);
+    
+        while (true) {
+            System.out.println();
+            System.out.println("Welcome, " + user + "! What would you like to do?");
+            System.out.println("[1] Search for videos");
+            System.out.println("[2] Download a video");
+            System.out.println("[3] Exit");
+            System.out.print("Choice: ");
+    
+            String choice = scanner.nextLine().trim();
+    
+            switch (choice) {
+                case "1":
+                    System.out.print("Enter search query: ");
+                    String query = scanner.nextLine().trim();
+                    if (!query.isEmpty()) {
+                        search(query);
+                    } else {
+                        System.out.println("[WARN] Search query cannot be empty.");
+                    }
+                    break;
+                case "2":
+                    System.out.print("Enter filename to download: ");
+                    String filename = scanner.nextLine().trim();
+                    if (!filename.isEmpty()) {
+                        download(filename);
+                    } else {
+                        System.out.println("[WARN] Filename cannot be empty.");
+                    }
+                    break;
+                case "3":
+                    System.out.println("Goodbye, " + user + "!");
+                    System.exit(0);
+                    break;
+                default:
+                    System.out.println("[ERROR] Invalid option. Please choose 1, 2, or 3.");
+                    break;
+            }
+        }
+    }
 
-    /**
-     * Main entry point for the client program.
-     * If the --create flag is passed, this will create a new account on the server.
-     * If the --create flag is not passed, this will retrieve all posts from the server
-     * for the specified user and decrypt them using the user's ElGamal private key.
-     * @param args command line arguments
-     * @throws Exception if an error occurs while executing the program
-     */
+    // Main entry point
     public static void main(String[] args) throws Exception {
-        // Register Bouncy Castle provider
+        // Setup TLS and Bouncy Castle
         Security.addProvider(new BouncyCastleProvider());
-        
         System.setProperty("javax.net.ssl.trustStore", "truststore.jks");
         System.setProperty("javax.net.ssl.trustStorePassword", "test12345");
-        
+    
+        // Parse command line arguments
         processArgs(args);
-
+    
         if (create) {
+            // --- Account Creation Flow ---
             Console console = System.console();
             if (console == null) {
                 throw new IllegalStateException("Console not available. Please run in a real terminal.");
@@ -336,48 +269,61 @@ try {
             System.out.print("Enter a password: ");
             String password = new String(console.readPassword());
     
-            // 1. Generate ElGamal public/private keypair
+            // 1. Generate ElGamal keypair
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ElGamal");
-            keyGen.initialize(512); // FOR TESTING; can go higher later
+            keyGen.initialize(512);
             KeyPair kp = keyGen.generateKeyPair();
     
-            // 2. Generate AES key for file decryption
-            javax.crypto.KeyGenerator aesGen = javax.crypto.KeyGenerator.getInstance("AES");
-            aesGen.init(128); // 128-bit AES
-            javax.crypto.SecretKey aesKey = aesGen.generateKey();
+            // 2. Generate AES key
+            KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+            aesKeyGen.init(128);
+            SecretKey aesKey = aesKeyGen.generateKey();
     
-            // 3. Encrypt AES key with user's ElGamal public key
+            // 3. Generate AES IV
+            SecureRandom rand = new SecureRandom();
+            byte[] rawIV = new byte[16];
+            rand.nextBytes(rawIV);
+            IvParameterSpec iv = new IvParameterSpec(rawIV);
+    
+            // 4. Encrypt AES key with public key
             Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
             elgCipher.init(Cipher.ENCRYPT_MODE, kp.getPublic());
             byte[] encryptedAESKey = elgCipher.doFinal(aesKey.getEncoded());
     
-            // 4. Encode keys for transport/storage
+            // 5. Base64 encode all values
             String pubKeyEncoded = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
             String privKeyEncoded = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
             String encryptedAESKeyB64 = Base64.getEncoder().encodeToString(encryptedAESKey);
+            String ivEncoded = Base64.getEncoder().encodeToString(rawIV);
     
-            // 5. Start TLS connection to server
+            // 6. Connect to server and send request
             SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
             SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
             socket.startHandshake();
     
             channel = new ProtocolChannel(socket);
             channel.addMessageType(new StatusMessage());
+            channel.addMessageType(new UserCreationRequest("", "", "", "", "")); // dummy for decoding
     
-            // 6. Send CreateMessage to server
-            CreateMessage msg = new CreateMessage(user, password, pubKeyEncoded, encryptedAESKeyB64);
-            channel.sendMessage(msg);
+            UserCreationRequest req = new UserCreationRequest(user, password, pubKeyEncoded, encryptedAESKeyB64, ivEncoded);
+            channel.sendMessage(req);
     
-            // 7. Receive server response
             Message response = channel.receiveMessage();
-            System.out.println("Received response: " + response);
-    
             if (response instanceof StatusMessage) {
                 StatusMessage status = (StatusMessage) response;
+    
                 if (status.getStatus()) {
                     System.out.println("Account created successfully.");
                     System.out.println("Save your Private Key:\n" + privKeyEncoded);
-                    System.out.println("(Server may store your encrypted AES key separately.)");
+                    System.out.println("[INFO] Please log in to activate your account...");
+    
+                    if (!authenticateUser()) {
+                        System.out.println("[ERROR] Authentication failed.");
+                        System.exit(1);
+                    } else {
+                        System.out.println("[INFO] Account activated. You are now logged in.");
+                        interactiveSession();
+                    }
                 } else {
                     System.out.println("Failed to create account: " + status.getPayload());
                 }
@@ -386,6 +332,15 @@ try {
             }
     
             channel.closeChannel();
+        } else {
+            // --- Login + Menu Flow ---
+            if (!authenticateUser()) {
+                System.out.println("[ERROR] Authentication failed.");
+                System.exit(1);
+            }
+    
+            System.out.println("[INFO] Login successful.");
+            interactiveSession();
         }
     }
 }
