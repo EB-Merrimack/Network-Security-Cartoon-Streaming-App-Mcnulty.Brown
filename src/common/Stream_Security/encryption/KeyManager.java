@@ -6,7 +6,15 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.security.KeyStore;
 import java.util.Properties;
-
+/*
+ * This code is adapted from:
+ *   https://github.com/alesordo/Secure-RTSP-Video-Streaming
+ * 
+ * Original project: Secure RTSP Video Streaming (by Alessandro Sordo)
+ * Licensed under the MIT License.
+ * 
+ * Modifications:
+ */
 public class KeyManager {
     private static KeyStore createKeyStore(String fileName, String pw, String algorithm) throws Exception {
         File file = new File(fileName);

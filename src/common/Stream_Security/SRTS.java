@@ -9,7 +9,15 @@ import java.net.*;
 import java.nio.ByteBuffer;
 
 import static java.util.Arrays.copyOfRange;
-
+/*
+ * This code is adapted from:
+ *   https://github.com/alesordo/Secure-RTSP-Video-Streaming
+ * 
+ * Original project: Secure RTSP Video Streaming (by Alessandro Sordo)
+ * Licensed under the MIT License.
+ * 
+ * Modifications:
+ */
 public class SRTS extends DatagramSocket {
     public SRTS() throws SocketException {
         super();

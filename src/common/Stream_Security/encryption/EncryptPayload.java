@@ -6,7 +6,15 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.security.*;
 
-
+/*
+ * This code is adapted from:
+ *   https://github.com/alesordo/Secure-RTSP-Video-Streaming
+ * 
+ * Original project: Secure RTSP Video Streaming (by Alessandro Sordo)
+ * Licensed under the MIT License.
+ * 
+ * Modifications:
+ */
 
 public class EncryptPayload {
     public byte[] encrypt(byte[] data, int ptSize, SecretKey keyFound, SecretKey hMacKeyFound, String algorithm) throws Exception {
