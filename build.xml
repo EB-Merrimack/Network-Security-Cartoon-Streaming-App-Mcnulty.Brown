@@ -49,10 +49,10 @@
     </jar>
 
     <!-- Assemble the soft token program -->
-    <jar jarfile="${dist}/boardd.jar" basedir="${build}">
+    <jar jarfile="${dist}/drm.jar" basedir="${build}">
       <exclude name="client/" />
       <manifest>
-        <attribute name="Main-Class" value="server.BulletinBoardService" />
+        <attribute name="Main-Class" value="server.drm" />
         <attribute name="Class-Path" value="bcprov.jar" />
       </manifest>
       <zipfileset src="lib/merrimackutil.jar" excludes="META-INF/*.SF" />
