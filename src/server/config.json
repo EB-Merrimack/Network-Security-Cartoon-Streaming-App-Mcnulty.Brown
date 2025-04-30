@@ -4,5 +4,5 @@
   "keystore-file":"stores/keystore.jks",
   "keystore-pass":"test12345",
   "Videofolder":"src/server/cartoons",
-  "admin-file":"admin.json"
+  "admin-file":"src/server/admin.json"
 }
