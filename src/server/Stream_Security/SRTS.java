@@ -1,14 +1,23 @@
-package common.Video_Security;
-
-import common.Video_Security.encryption.EncryptPayload;
+package server.Stream_Security;
 
 import javax.crypto.SecretKey;
+
+import server.Stream_Security.encryption.EncryptPayload;
+
 import java.io.ByteArrayOutputStream;
 import java.net.*;
 import java.nio.ByteBuffer;
 
 import static java.util.Arrays.copyOfRange;
-
+/*
+ * This code is adapted from:
+ *   https://github.com/alesordo/Secure-RTSP-Video-Streaming
+ * 
+ * Original project: Secure RTSP Video Streaming (by Alessandro Sordo)
+ * Licensed under the MIT License.
+ * 
+ * Modifications:
+ */
 public class SRTS extends DatagramSocket {
     public SRTS() throws SocketException {
         super();

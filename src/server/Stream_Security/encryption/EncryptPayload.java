@@ -1,4 +1,4 @@
-package common.Stream_Security.encryption;
+package server.Stream_Security.encryption;
 
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
