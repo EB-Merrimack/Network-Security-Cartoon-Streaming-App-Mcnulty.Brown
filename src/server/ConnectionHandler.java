@@ -37,13 +37,13 @@ public class ConnectionHandler implements Runnable {
      * @throws IllegalArgumentException the socket is invalid.
      * @throws IOException we can't read or write from the channel.
      */
-    public ConnectionHandler(Socket sock, boolean doDebug, String serviceName, String secret, NonceCache nonceCache) throws IllegalArgumentException, IOException
+    public ConnectionHandler(Socket sock, String serviceName, String secret, NonceCache nonceCache) throws IllegalArgumentException, IOException
     {
         this.channel = new ProtocolChannel(sock);
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
         this.channel.addMessageType(new AuthenticateMessage());
       
-        this.doDebug = doDebug;
+        
 
         this.nonceCache = nonceCache;
         this.serviceName = serviceName;

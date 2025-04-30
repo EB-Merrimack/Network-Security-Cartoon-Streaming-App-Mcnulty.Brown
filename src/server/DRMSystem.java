@@ -63,11 +63,13 @@ public class DRMSystem {
             File configFile = new File(configName);
             config.setConfigDir(configFile.getParent());
         }
-        catch (InvalidObjectException ex)
-        {
-            System.out.println("Invalid configuration file.");
-            System.exit(1);
-        }
+           catch (InvalidObjectException ex)
+    {
+        System.err.println("Invalid configuration file: " + configName);
+        System.err.println("Reason: " + ex.getMessage());
+        ex.printStackTrace();  // optional: prints full stack trace for debugging
+        System.exit(1);
+    }
     }
     /**
      * Process the command line arguments.
@@ -130,7 +132,7 @@ public class DRMSystem {
         System.out.println("[DEBUG] File exists? " + new File(config.getKeystoreFile()).exists());
 
         SSLServerSocketFactory sslFactory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
-        SSLServerSocket server = (SSLServerSocket) sslFactory.createServerSocket(config.getPort());        System.out.println("Bulletin Board Server started on port " + config.getPort());
+        SSLServerSocket server = (SSLServerSocket) sslFactory.createServerSocket(config.getPort());        System.out.println("Server started on port " + config.getPort());
 
         nonceCache = new NonceCache(32, 30);
         ExecutorService pool = Executors.newFixedThreadPool(10);
@@ -140,7 +142,6 @@ public class DRMSystem {
             SSLSocket sock = (SSLSocket) server.accept();
             pool.submit(new ConnectionHandler(
                 sock,
-                config.doDebug(),
                 "board", // service name expected in the ticket
                 config.getKeystorePass(), // shared secret
                 nonceCache
