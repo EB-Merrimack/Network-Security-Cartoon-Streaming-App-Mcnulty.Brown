@@ -1,39 +1,65 @@
-package server;
+
 //This class is to be used for taking a users existing account and encrypting it with the admin key to make it more secure 
 //to then be used in the admin.json the root admin account
-/* in production this would be encrypted itself and not accessible in any way to allowed enhanced security for the super user*/
+/* in production this would be encrypted itself or deleted and not accessible in any way to allowed enhanced security for the super user*/
+package server;
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+
+import merrimackutil.json.types.JSONObject;
+
 import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.io.*;
-import merrimackutil.json.types.JSONObject;
+
 
 public class AdminEnhancement {
 
-    private static final String ADMIN_KEY = "YOUR_ADMIN_KEY"; // Admin key for encryption
     private static final String SIGNING_KEY = "YOUR_SIGNING_PRIVATE_KEY"; // Private key for signing
     private static final String FILE_PATH = "admin.json"; // Path where the encrypted data will be stored
 
     public static void main(String[] args) {
-        // Example usage: Encrypt a user account
+        // Step 1: Generate a new Admin Key (AES)
+        String adminKey = generateAdminKey();
+        System.out.println("Admin Key: " + adminKey);
+
+        // Step 2: Encrypt a user account with the admin key
         String userAccountJson = "{ \"username\": \"admin\", \"password\": \"securepassword123\" }";
-        String encryptedAccount = encryptUserAccount(userAccountJson);
-        
+        String encryptedAccount = encryptUserAccount(userAccountJson, adminKey);
+
+        // Step 3: Generate signature for encrypted data
         String signature = generateSignature(encryptedAccount); // Generate signature
 
-        // Store encrypted account and its signature in the file
+        // Step 4: Store encrypted account and its signature in the admin.json file
         storeEncryptedAccount(encryptedAccount, signature);
     }
 
-    // Method to encrypt a user account
-    public static String encryptUserAccount(String userAccountJson) {
+    // Method to generate a secure AES Admin Key (Base64 encoded)
+    public static String generateAdminKey() {
+        try {
+            // Generate AES key using KeyGenerator
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(256); // AES 256-bit key
+            SecretKey secretKey = keyGen.generateKey();
+
+            // Encode the key as Base64 for storage
+            return Base64.getEncoder().encodeToString(secretKey.getEncoded());
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // Method to encrypt a user account using the provided admin key (AES)
+    public static String encryptUserAccount(String userAccountJson, String adminKey) {
         try {
             // Convert the admin key to SecretKey
-            SecretKeySpec secretKey = new SecretKeySpec(ADMIN_KEY.getBytes(), "AES");
+            SecretKeySpec secretKey = new SecretKeySpec(Base64.getDecoder().decode(adminKey), "AES");
 
             // Create Cipher instance for AES encryption
             Cipher cipher = Cipher.getInstance("AES");
@@ -125,4 +151,3 @@ public class AdminEnhancement {
         return keyFactory.generatePublic(new X509EncodedKeySpec(decodedKey));
     }
 }
-
