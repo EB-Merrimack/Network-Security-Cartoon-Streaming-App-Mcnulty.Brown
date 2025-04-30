@@ -20,6 +20,7 @@ public class Configuration implements JSONSerializable
   private String keystoreFile;
   private String keystorePass;
   private String configDir;
+  private static String adminFile;
 
   
 
@@ -115,11 +116,11 @@ public class Configuration implements JSONSerializable
       config.checkValidity(keys);
 
       port = config.getInt("port");
-      doDebug = config.getBoolean("debug");
       usersFile = config.getString("users-file");
       boardFile = config.getString("board-file");
       keystoreFile = config.getString("keystore-file");
       keystorePass = config.getString("keystore-pass");
+      adminFile = config.getString("admin-file");
     }
     else
     {
@@ -142,6 +143,7 @@ public class Configuration implements JSONSerializable
     obj.put("VideoDashboard-file", boardFile);
     obj.put("keystore-file", keystoreFile);
     obj.put("keystore-pass", keystorePass);
+    obj.put("admin-file", adminFile);
 
     return obj;
   }
