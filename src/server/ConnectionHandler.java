@@ -83,7 +83,8 @@ public class ConnectionHandler implements Runnable {
                     continue; // Continue waiting for the next message
                 }
                 System.out.println("[DEBUG] Received message: " + msg);
-            if (msg.getType().equals("Create")) {
+            if (msg.getType().equals("create-account")) {
+                System.out.println("[SERVER] Received CreateMessage.");
                 // Handle CreateMessage 
                 handleCreateMessage(msg);
                 return;
