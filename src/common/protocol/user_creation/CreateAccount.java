@@ -1,119 +1,101 @@
 package common.protocol.user_creation;
 
-import common.protocol.Message;
 import common.protocol.messages.StatusMessage;
-import common.protocol.user_auth.User;
 import common.protocol.user_auth.UserDatabase;
-import merrimackutil.json.types.JSONObject;
-import merrimackutil.json.types.JSONType;
 
 import org.bouncycastle.crypto.generators.SCrypt;
 
-import java.io.InvalidObjectException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
-public class CreateAccount implements Message {
-    public static StatusMessage createAccount(
-        String username, 
-        String password, 
-        String publicKey, 
-        String encryptedAESKey, 
-        String aesIV,
-        String userfile
-    ) {
+public class CreateAccount {
+
+    // Simulated database (in a real-world scenario, this could be a database connection)
+    private static Map<String, User> userDatabase = new HashMap<>();
+
+    // Internal User class
+    public static class User {
+        private String username;
+        private String passwordHash; // Store password securely using hash
+        private String publicKey;
+        private String totpKey;       // Base64 encoded TOTP key
+        private String privateKey;    // The private key generated for the user
+        private String encryptedAESKey; // AES key encrypted with user's public key
+        private String aesIV;           // Initialization Vector for AES
+
+        // Constructor
+        public User(String username, String passwordHash, String publicKey,
+                    String totpKey, String privateKey, String encryptedAESKey, String aesIV) {
+            this.username = username;
+            this.passwordHash = passwordHash;
+            this.publicKey = publicKey;
+            this.totpKey = totpKey;
+            this.privateKey = privateKey;
+            this.encryptedAESKey = encryptedAESKey;
+            this.aesIV = aesIV;
+        }
+    }
+
+    /**
+     * Creates a new user in the user database given a username, password, public key,
+     * encrypted AES key, AES IV, and private key.
+     *
+     * @param username         the username of the new user
+     * @param password         the password of the new user
+     * @param publicKey        the encoded public key of the new user
+     * @param encryptedAESKey  the AES key encrypted with the user's public key
+     * @param aesIV            the initialization vector (IV) used with AES
+     * @param privateKey       the private key associated with the user
+     * @return a StatusMessage with success/failure and the base64 TOTP key or error message
+     */
+    public static StatusMessage createAccount(String username, String password, String publicKey, String encryptedAESKey, String aesIV, String userfile ) {
         try {
-            // Load users.json
-            UserDatabase.load(userfile);
-
-            if (UserDatabase.containsKey(username)) {
+            // Check if user already exists
+            if (userDatabase.containsKey(username)) {
                 return new StatusMessage(false, "User already exists.");
             }
 
-            // Generate salt + hash password
+            // Generate salt
             byte[] saltBytes = new byte[16];
             SecureRandom random = new SecureRandom();
             random.nextBytes(saltBytes);
             String salt = Base64.getEncoder().encodeToString(saltBytes);
 
+            // Hash password using SCrypt
             byte[] hash = SCrypt.generate(password.getBytes(), saltBytes, 2048, 8, 1, 16);
             String passwordHash = Base64.getEncoder().encodeToString(hash);
 
             // Generate TOTP key
-            byte[] totpKeyBytes = new byte[64];
+            byte[] totpKeyBytes = new byte[64]; // 512 bits
             random.nextBytes(totpKeyBytes);
             String totpKey = Base64.getEncoder().encodeToString(totpKeyBytes);
 
-            // Build user object
-            User newUser = new User(
+            // Create User object
+            common.protocol.user_auth.User user = new  common.protocol.user_auth.User(
                 salt,
-                passwordHash,
-                totpKey,
                 username,
+                passwordHash,
                 publicKey,
+                totpKey,
                 encryptedAESKey,
                 aesIV
+
             );
 
-            // Save to database
-            UserDatabase.put(username, newUser);
+              // Save user to database and write back to file
+            UserDatabase.put(username, user);
             UserDatabase.save(userfile);
 
-            // Return TOTP for client setup
+            // Return the TOTP key (for client setup)
             return new StatusMessage(true, totpKey);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return new StatusMessage(false, "Account creation failed.");
+            return new StatusMessage(false, "Unexpected error during account creation.");
         }
     }
 
-    public String getUsername() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getUsername'");
-    }
-
-    public String getPassword() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPassword'");
-    }
-
-    public String getPublicKey() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getPublicKey'");
-    }
-
-    public String getEncryptedAESKey() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getEncryptedAESKey'");
-    }
-
-    public String getAesIV() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getAesIV'");
-    }
-
-    @Override
-    public void deserialize(JSONType arg0) throws InvalidObjectException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'deserialize'");
-    }
-
-    @Override
-    public JSONType toJSONType() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'toJSONType'");
-    }
-
-    @Override
-    public String getType() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getType'");
-    }
-
-    @Override
-    public Message decode(JSONObject obj) throws InvalidObjectException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'decode'");
-    }
+   
 }

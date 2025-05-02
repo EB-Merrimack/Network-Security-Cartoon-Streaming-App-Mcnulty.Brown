@@ -11,7 +11,7 @@ public class User implements JSONSerializable {
     private String pass;
     private String totpKey;
     private String user;
-    private String pubkey;
+    private  String pubkey;
     private String encryptedAESKey;
     private String aesIV;
 
