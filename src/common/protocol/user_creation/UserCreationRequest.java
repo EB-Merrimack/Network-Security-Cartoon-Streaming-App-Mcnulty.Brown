@@ -13,13 +13,57 @@ public class UserCreationRequest implements Message {
     private String publicKey;
     private String encryptedAESKey;
     private String aesIV;
-
+    public UserCreationRequest() {
+    }
     public UserCreationRequest(String username, String password, String publicKey, String encryptedAESKey, String aesIV) {
         this.username = username;
         this.password = password;
         this.publicKey = publicKey;
         this.encryptedAESKey = encryptedAESKey;
         this.aesIV = aesIV;
+    }
+/**
+     * Returns the username associated with this create message.
+     *
+     * @return the username associated with this create message
+     */
+    public String getUsername() {
+        return username;
+    }
+    /**
+     * Returns the user's password as a string.
+     *
+     * @return the user's password
+     */
+    public String getPassword() {
+        return password;
+    }
+    
+    /**
+     * Returns the user's public key as a Base64-encoded string.
+     *
+     * @return the user's public key
+     */
+    public String getPublicKey() {
+        return publicKey;
+    }
+    
+    /**
+     * Returns the AES key encrypted with the user's public key as a Base64-encoded string.
+     *
+     * @return the AES key encrypted with the user's public key
+     */
+    public String getEncryptedAESKey() {
+        return encryptedAESKey;
+    }
+    
+    /**
+     * Returns the initialization vector (IV) used with AES as a Base64-encoded string.
+     *
+     * @return the initialization vector (IV) used with AES
+     */
+    public String getAesIV() {
+        return aesIV;
     }
 
     @Override
@@ -64,4 +108,6 @@ public class UserCreationRequest implements Message {
         );
         return req;
     }
+
+   
 }

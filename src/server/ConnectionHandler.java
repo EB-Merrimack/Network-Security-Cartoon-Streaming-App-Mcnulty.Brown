@@ -8,6 +8,7 @@ import java.util.List;
 
 import common.protocol.Message;
 import common.protocol.user_creation.CreateAccount;
+import common.protocol.user_creation.UserCreationRequest;
 import common.protocol.ProtocolChannel;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.PubKeyRequest;
@@ -39,7 +40,7 @@ public class ConnectionHandler implements Runnable {
     public ConnectionHandler(Socket sock, boolean doDebug, String serviceName, String secret, NonceCache nonceCache) throws IllegalArgumentException, IOException
     {
         this.channel = new ProtocolChannel(sock);
-        this.channel.addMessageType(new common.protocol.user_creation.CreateAccount());
+        this.channel.addMessageType(new common.protocol.user_creation.UserCreationRequest());
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new PubKeyRequest());
@@ -137,8 +138,8 @@ public class ConnectionHandler implements Runnable {
             System.out.println("[SERVER] Handling CreateMessage");
     
             // Safe cast
-            common.protocol.user_creation.CreateAccount createMsg = 
-                (common.protocol.user_creation.CreateAccount) msg;
+            common.protocol.user_creation.UserCreationRequest createMsg = 
+                (common.protocol.user_creation.UserCreationRequest) msg;
     
             String username = createMsg.getUsername();
             String password = createMsg.getPassword();
