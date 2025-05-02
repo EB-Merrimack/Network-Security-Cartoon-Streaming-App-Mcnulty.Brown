@@ -15,7 +15,7 @@ public class Configuration implements JSONSerializable
 {
   private int port;
   private static String usersFile;
-  private static String boardFile;
+  private static String Videofolder;
   private String keystoreFile;
   private String keystorePass;
   private String configDir;
@@ -57,9 +57,9 @@ public class Configuration implements JSONSerializable
    * Get the path to the bulletin board file.
    * @return the file path as a string.
    */
-  public static String getBoardFile()
+  public static String getVideofolder()
   {
-    return boardFile;
+    return Videofolder;
   }
 
   /**
@@ -109,7 +109,7 @@ public class Configuration implements JSONSerializable
   
           port = config.getInt("port");
           usersFile = config.getString("users-file");
-          boardFile = config.getString("Videofolder");
+          Videofolder = config.getString("Videofolder");
           keystoreFile = config.getString("keystore-file");
           keystorePass = config.getString("keystore-pass");
           adminFile = config.getString("admin-file");
@@ -134,7 +134,7 @@ public class Configuration implements JSONSerializable
 
     obj.put("port", port);
     obj.put("users-file", usersFile);
-    obj.put("Videofolder", boardFile);
+    obj.put("Videofolder", Videofolder);
     obj.put("keystore-file", keystoreFile);
     obj.put("keystore-pass", keystorePass);
     obj.put("admin-file", adminFile);

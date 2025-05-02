@@ -38,7 +38,7 @@
     <!-- Assemble the verification server program -->
     <jar jarfile="${dist}/client.jar" basedir="${build}">
       <exclude name="server/"/>
-       <exclude name="adminclient/"/>
+       <exclude name="admin_client/"/>
       <manifest>
         <attribute name="Main-Class" value="client.Client" />
         <attribute name="Class-Path" value="bcprov.jar" />
@@ -49,7 +49,7 @@
     <!-- Assemble the soft token program -->
     <jar jarfile="${dist}/drm.jar" basedir="${build}">
       <exclude name="client/" />
-      <exclude name="adminclient/"/>
+      <exclude name="admin_client/"/>
       <manifest>
         <attribute name="Main-Class" value="server.DRMSystem" />
         <attribute name="Class-Path" value="bcprov.jar" />
@@ -58,7 +58,7 @@
     </jar>
 
     <!-- Assemble the admin client program -->
-    <jar jarfile="${dist}/adminclient.jar" basedir="${build}">
+    <jar jarfile="${dist}/admin_client.jar" basedir="${build}">
       <exclude name="server/" />
       <exclude name="client/" />
       <manifest>
