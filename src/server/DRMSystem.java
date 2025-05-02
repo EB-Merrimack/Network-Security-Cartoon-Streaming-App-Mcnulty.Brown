@@ -142,7 +142,7 @@ public class DRMSystem {
             SSLSocket sock = (SSLSocket) server.accept();
             pool.submit(new ConnectionHandler(
                 sock,
-                "board", // service name expected in the ticket
+                false, "board", // service name expected in the ticket
                 config.getKeystorePass(), // shared secret
                 nonceCache
             ));
