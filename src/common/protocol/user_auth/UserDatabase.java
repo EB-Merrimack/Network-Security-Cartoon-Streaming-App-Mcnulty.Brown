@@ -115,6 +115,7 @@ public class UserDatabase {
          */
     private static void saveUsers(String userfile) {
         try {
+            System.out.println("[UserDatabase] Saving users to file."+userfile);
             JSONArray entries = new JSONArray();
             for (User user : userMap.values()) {
                 entries.add(user.toJSONType());
