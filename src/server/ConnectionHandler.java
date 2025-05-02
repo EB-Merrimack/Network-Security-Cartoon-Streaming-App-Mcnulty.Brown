@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import common.protocol.Message;
+import common.protocol.user_creation.CreateAccount;
+import common.protocol.user_creation.UserCreationRequest;
 import common.protocol.ProtocolChannel;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.PubKeyRequest;
@@ -14,7 +16,6 @@ import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.UserDatabase;
 import merrimackutil.util.NonceCache;
-
 
 
 public class ConnectionHandler implements Runnable {
@@ -25,7 +26,6 @@ public class ConnectionHandler implements Runnable {
     private String serviceName;
     private String secret;
     private byte[] sessionKey;
-  
 
     /**
      * Constructs a new connection handler for the given connection.
@@ -40,8 +40,11 @@ public class ConnectionHandler implements Runnable {
     public ConnectionHandler(Socket sock, boolean doDebug, String serviceName, String secret, NonceCache nonceCache) throws IllegalArgumentException, IOException
     {
         this.channel = new ProtocolChannel(sock);
+        this.channel.addMessageType(new common.protocol.user_creation.UserCreationRequest());
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
         this.channel.addMessageType(new AuthenticateMessage());
+        this.channel.addMessageType(new PubKeyRequest());
+  
       
         this.doDebug = doDebug;
 
@@ -65,7 +68,6 @@ public class ConnectionHandler implements Runnable {
        */
       private void runCommunication() {
         try {
-      
             while (true) {
                 System.out.println("[DEBUG] Waiting to receive a message...");
                 Message msg = null;
@@ -81,8 +83,10 @@ public class ConnectionHandler implements Runnable {
                     continue; // Continue waiting for the next message
                 }
                 System.out.println("[DEBUG] Received message: " + msg);
-            if (msg.getType().equals("Create")) {
+            if (msg.getType().equals("create-account")) {
+                System.out.println("[SERVER] Received CreateMessage.");
                 // Handle CreateMessage 
+                handleCreateMessage(msg);
                 return;
             } else if (msg.getType().equals("authenticate")) {
             boolean success = AuthenticationHandler.authenticate((AuthenticateMessage) msg);
@@ -106,7 +110,8 @@ public class ConnectionHandler implements Runnable {
             channel.sendMessage((Message) new StatusMessage(true, base64Key));
             System.out.println("[SERVER] Public key sent.");
 
-        }  else {
+        }
+         else {
             System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
         }
 
@@ -129,4 +134,35 @@ public class ConnectionHandler implements Runnable {
          * 
          * @param msg the CreateMessage received from the client
          */
+    private void handleCreateMessage(Message msg) {
+        try {
+            System.out.println("[SERVER] Handling CreateMessage");
+    
+            // Safe cast
+            common.protocol.user_creation.UserCreationRequest createMsg = 
+                (common.protocol.user_creation.UserCreationRequest) msg;
+    
+            String username = createMsg.getUsername();
+            String password = createMsg.getPassword();
+            String publicKey = createMsg.getPublicKey();
+            String encryptedAESKey= createMsg.getEncryptedAESKey();
+            String aesIV= createMsg.getAesIV();
+            String userfile = Configuration.getUsersFile();
+    
+            System.out.println("[SERVER] Creating account for: " + username);
+    
+            // Call account creation logic
+            common.protocol.messages.StatusMessage response =
+                common.protocol.user_creation.CreateAccount.createAccount(username, password, publicKey, userfile, aesIV, encryptedAESKey);
+    
+            // Send the response back to the client
+            channel.sendMessage(response);
+    
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+      
+    
+    
 }

@@ -38,6 +38,7 @@
     <!-- Assemble the verification server program -->
     <jar jarfile="${dist}/client.jar" basedir="${build}">
       <exclude name="server/"/>
+       <exclude name="admin_client/"/>
       <manifest>
         <attribute name="Main-Class" value="client.Client" />
         <attribute name="Class-Path" value="bcprov.jar" />
@@ -48,8 +49,20 @@
     <!-- Assemble the soft token program -->
     <jar jarfile="${dist}/drm.jar" basedir="${build}">
       <exclude name="client/" />
+      <exclude name="admin_client/"/>
       <manifest>
-        <attribute name="Main-Class" value="server.drm" />
+        <attribute name="Main-Class" value="server.DRMSystem" />
+        <attribute name="Class-Path" value="bcprov.jar" />
+      </manifest>
+      <zipfileset src="lib/merrimackutil.jar" excludes="META-INF/*.SF" />
+    </jar>
+
+    <!-- Assemble the admin client program -->
+    <jar jarfile="${dist}/admin_client.jar" basedir="${build}">
+      <exclude name="server/" />
+      <exclude name="client/" />
+      <manifest>
+        <attribute name="Main-Class" value="admin_client.adminclient" />
         <attribute name="Class-Path" value="bcprov.jar" />
       </manifest>
       <zipfileset src="lib/merrimackutil.jar" excludes="META-INF/*.SF" />

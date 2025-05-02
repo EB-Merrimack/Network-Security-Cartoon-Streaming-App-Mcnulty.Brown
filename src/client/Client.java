@@ -26,6 +26,7 @@ import common.protocol.messages.*;
 import common.protocol.user_creation.UserCreationRequest;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
+import merrimackutil.codec.Base32;
 import merrimackutil.util.NonceCache;
 import merrimackutil.util.Tuple;
 
@@ -319,6 +320,10 @@ public class Client {
                 if (status.getStatus()) {
                     System.out.println("Account created successfully.");
                     System.out.println("Save your Private Key:\n" + privKeyEncoded);
+                    String totpKey = StatusMessage.getPayload();
+                byte[] totpBytes = Base64.getDecoder().decode(totpKey);
+                String base32Totp = Base32.encodeToString(totpBytes, true); // no padding
+                System.out.println("Base 32 Key:\n" + base32Totp);
                     System.out.println("[INFO] Please log in to activate your account...");
     
                     if (!authenticateUser()) {

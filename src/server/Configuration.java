@@ -14,9 +14,8 @@ import java.io.InvalidObjectException;
 public class Configuration implements JSONSerializable
 {
   private int port;
-  private boolean doDebug;
   private static String usersFile;
-  private static String boardFile;
+  private static String Videofolder;
   private String keystoreFile;
   private String keystorePass;
   private String configDir;
@@ -43,14 +42,7 @@ public class Configuration implements JSONSerializable
     return this.port;
   }
 
-  /**
-   * Check if debugging is turned on.
-   * @return true if debugging is requested; otherwise, false.
-   */
-  public boolean doDebug()
-  {
-    return this.doDebug;
-  }
+
 
   /**
    * Get the path to the users database file.
@@ -65,9 +57,9 @@ public class Configuration implements JSONSerializable
    * Get the path to the bulletin board file.
    * @return the file path as a string.
    */
-  public static String getBoardFile()
+  public static String getVideofolder()
   {
-    return boardFile;
+    return Videofolder;
   }
 
   /**
@@ -103,32 +95,35 @@ public class Configuration implements JSONSerializable
    */
   public void deserialize(JSONType obj) throws InvalidObjectException
   {
-    JSONObject config;
-    String[] keys = {
-      "port", "debug", "users-file", "board-file",
-      "keystore-file", "keystore-pass"
-    };
-
-    if (obj.isObject())
-    {
-      config = (JSONObject) obj;
-
-      config.checkValidity(keys);
-
-      port = config.getInt("port");
-      usersFile = config.getString("users-file");
-      boardFile = config.getString("board-file");
-      keystoreFile = config.getString("keystore-file");
-      keystorePass = config.getString("keystore-pass");
-      adminFile = config.getString("admin-file");
-    }
-    else
-    {
-      throw new InvalidObjectException(
-        "Configuration -- received array, expected Object.");
-    }
+      JSONObject config;
+      String[] keys = {
+          "port", "users-file", "Videofolder",
+          "keystore-file", "keystore-pass", "admin-file"
+      };
+  
+      if (obj.isObject())
+      {
+          config = (JSONObject) obj;
+  
+          config.checkValidity(keys);
+  
+          port = config.getInt("port");
+          usersFile = config.getString("users-file");
+          Videofolder = config.getString("Videofolder");
+          keystoreFile = config.getString("keystore-file");
+          keystorePass = config.getString("keystore-pass");
+          adminFile = config.getString("admin-file");
+      }
+  
+          
+      else
+      {
+          throw new InvalidObjectException(
+              "Configuration -- received array, expected Object."
+          );
+      }
   }
-
+  
   /**
    * Converts the object to a JSON type.
    * @return a JSON type either JSONObject or JSONArray.
@@ -138,9 +133,8 @@ public class Configuration implements JSONSerializable
     JSONObject obj = new JSONObject();
 
     obj.put("port", port);
-    obj.put("debug", doDebug);
     obj.put("users-file", usersFile);
-    obj.put("VideoDashboard-file", boardFile);
+    obj.put("Videofolder", Videofolder);
     obj.put("keystore-file", keystoreFile);
     obj.put("keystore-pass", keystorePass);
     obj.put("admin-file", adminFile);

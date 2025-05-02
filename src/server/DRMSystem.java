@@ -3,6 +3,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InvalidObjectException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -11,7 +14,6 @@ import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
-import common.CryptoUtils;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
 import merrimackutil.json.JsonIO;
@@ -63,11 +65,13 @@ public class DRMSystem {
             File configFile = new File(configName);
             config.setConfigDir(configFile.getParent());
         }
-        catch (InvalidObjectException ex)
-        {
-            System.out.println("Invalid configuration file.");
-            System.exit(1);
-        }
+           catch (InvalidObjectException ex)
+    {
+        System.err.println("Invalid configuration file: " + configName);
+        System.err.println("Reason: " + ex.getMessage());
+        ex.printStackTrace();  // optional: prints full stack trace for debugging
+        System.exit(1);
+    }
     }
     /**
      * Process the command line arguments.
@@ -130,7 +134,7 @@ public class DRMSystem {
         System.out.println("[DEBUG] File exists? " + new File(config.getKeystoreFile()).exists());
 
         SSLServerSocketFactory sslFactory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
-        SSLServerSocket server = (SSLServerSocket) sslFactory.createServerSocket(config.getPort());        System.out.println("Bulletin Board Server started on port " + config.getPort());
+        SSLServerSocket server = (SSLServerSocket) sslFactory.createServerSocket(config.getPort());        System.out.println("Server started on port " + config.getPort());
 
         nonceCache = new NonceCache(32, 30);
         ExecutorService pool = Executors.newFixedThreadPool(10);
@@ -140,17 +144,42 @@ public class DRMSystem {
             SSLSocket sock = (SSLSocket) server.accept();
             pool.submit(new ConnectionHandler(
                 sock,
-                config.doDebug(),
-                "board", // service name expected in the ticket
+                false, "board", // service name expected in the ticket
                 config.getKeystorePass(), // shared secret
                 nonceCache
             ));
         }
     }
 
-    public void protectContent(String content) throws Exception {
+    public void protectContent(File inputFile) throws Exception {
         SecretKey key = KeyManager.generateKey();
-        byte[] encryptedContent = CryptoUtils.encrypt(content, key);
-        // Store encrypted content and key securely
+        byte[] fileData = Files.readAllBytes(inputFile.toPath());
+        byte[] encryptedContent = CryptoUtils.encrypt(fileData, key);
+
+        // Use configured video folder
+        Path videoDir = Paths.get(Configuration.getVideofolder());
+        if (!Files.exists(videoDir)) {
+            Files.createDirectories(videoDir);
+        }
+
+        // Save the encrypted file with same name but .enc extension
+        String outputFileName = inputFile.getName() + ".enc";
+        Path outputPath = videoDir.resolve(outputFileName);
+        Files.write(outputPath, encryptedContent);
+
+        System.out.println("Encrypted content saved to: " + outputPath.toAbsolutePath());
+    }
+    public void decryptContent(File inputFile, SecretKey key) throws Exception {
+        // Read the encrypted content from the file
+        byte[] encryptedData = Files.readAllBytes(inputFile.toPath());
+        
+        // Decrypt the content
+        String decryptedData = CryptoUtils.decrypt(encryptedData, key);
+
+        // Save the decrypted content to a new file (for testing)
+        File decryptedFile = new File("decrypted_" + inputFile.getName());
+        Files.write(decryptedFile.toPath(), decryptedData.getBytes());
+        
+        System.out.println("File decrypted and saved as: " + decryptedFile.getName());
     }
 }
