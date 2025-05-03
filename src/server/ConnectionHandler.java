@@ -5,11 +5,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-
+import server.Configuration;
 import common.protocol.Message;
 import common.protocol.user_creation.CreateAccount;
 import common.protocol.user_creation.UserCreationRequest;
 import common.protocol.ProtocolChannel;
+import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.PubKeyRequest;
 import common.protocol.messages.StatusMessage;
@@ -42,6 +43,7 @@ public class ConnectionHandler implements Runnable {
         this.channel = new ProtocolChannel(sock);
         this.channel.addMessageType(new common.protocol.user_creation.UserCreationRequest());
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
+        this.channel.addMessageType(new common.protocol.messages.AdminInsertVideoRequest());
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new PubKeyRequest());
   
@@ -111,6 +113,12 @@ public class ConnectionHandler implements Runnable {
             System.out.println("[SERVER] Public key sent.");
 
         }
+        else if (msg.getType().equals("AdminInsertVideoRequest")) {
+            System.out.println("[SERVER] Received AdminInsertVideoRequest.");
+            // Handle AdminInsertVideoRequest
+            handleAdminInsertVideoRequest(msg);
+            return;
+        }
          else {
             System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
         }
@@ -123,6 +131,27 @@ public class ConnectionHandler implements Runnable {
 
             
        
+
+        private void handleAdminInsertVideoRequest(Message msg) {
+        
+        if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
+            System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
+            System.exit(1); // Exit immediately with error code 1 (nonzero means failure)
+        }
+        boolean success = AuthenticationHandler.authenticate((AuthenticateMessage) msg);
+
+        if (!success) {
+            channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
+            return;
+        }
+        
+        AdminInsertVideoRequest adminInsertVideoRequest = (AdminInsertVideoRequest) msg;
+        
+        String videoPath = adminInsertVideoRequest.getVideoPath();
+        
+       
+        
+     }
 
         /**
          * Handles a CreateMessage sent by the client. Creates a new user account using the

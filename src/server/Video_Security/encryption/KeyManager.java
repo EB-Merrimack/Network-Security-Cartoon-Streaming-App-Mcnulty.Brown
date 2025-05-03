@@ -1,4 +1,4 @@
-package server;
+package server.Video_Security.encryption;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 

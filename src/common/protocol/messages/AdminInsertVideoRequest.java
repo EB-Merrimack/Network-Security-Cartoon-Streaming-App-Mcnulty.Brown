@@ -16,6 +16,10 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
         this.videofile = videofile;
     }
 
+    public AdminInsertVideoRequest() {
+        //TODO Auto-generated constructor stub
+    }
+
     // Getter for the username
     public String getUser() {
         return user;
@@ -74,5 +78,15 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
                 ", password='" + password + '\'' +
                 ", videofile='" + videofile + '\'' +
                 '}';
+    }
+
+    public String getVideoName() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getVideoName'");
+    }
+
+    public String getVideoPath() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getVideoPath'");
     }
 }
