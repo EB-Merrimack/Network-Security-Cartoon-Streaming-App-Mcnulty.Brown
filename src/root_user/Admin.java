@@ -64,8 +64,32 @@ public class Admin implements JSONSerializable {
         return json;
     }
 
-    public void put(String string, String string2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'put'");
+public void put(String key, String value) {
+    switch (key) {
+        case "salt":
+            this.salt = value;
+            break;
+        case "pass":
+            this.pass = value;
+            break;
+        case "totp-key":
+            this.totpKey = value;
+            break;
+        case "user":
+            this.user = value;
+            break;
+        case "pubkey":
+            this.pubkey = value;
+            break;
+        case "encryptedAESKey":
+            this.encryptedAESKey = value;
+            break;
+        case "aesIV":
+            this.aesIV = value;
+            break;
+        default:
+            throw new IllegalArgumentException("Invalid key: " + key);
     }
+}
+
 }
