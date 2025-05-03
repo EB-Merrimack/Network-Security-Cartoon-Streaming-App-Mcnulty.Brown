@@ -127,6 +127,15 @@ public class DRMSystem {
     public static void main(String[] args) throws IOException
     {
         processArgs(args);
+          // Verify the root admin before starting the server
+        
+            String adminFilePath = config.getAdminFile();  // Assuming admin.json is in the config directory
+            AdminVerifier.verifyAdminFile(adminFilePath);
+            if (!AdminVerifier.verifyAdminFile("src/server/admin.json")) {
+                System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
+                System.exit(1); // Exit immediately with error code 1 (nonzero means failure)
+            }
+       
 
         System.setProperty("javax.net.ssl.keyStore", config.getKeystoreFile());
         System.setProperty("javax.net.ssl.keyStorePassword", config.getKeystorePass());
