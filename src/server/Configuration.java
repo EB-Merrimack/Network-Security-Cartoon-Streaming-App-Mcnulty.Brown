@@ -42,6 +42,9 @@ public class Configuration implements JSONSerializable
     return this.port;
   }
 
+  public String getAdminFile() {
+    return adminFile;
+  }
 
 
   /**

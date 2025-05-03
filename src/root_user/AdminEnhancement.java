@@ -5,7 +5,7 @@ package root_user;
 /* In production, this would be encrypted itself or deleted and not accessible in any way 
    to allow enhanced security for the super user */
 
-/* To compile, run in terminal: javac -cp "lib/*:src" src/server/AdminEnhancement.java */
+/* To compile, run in terminal: ava -jar .\dist\root_user.jar after compiling the root_user using the compile and dist build */
 
 import merrimackutil.json.types.JSONObject;
 import merrimackutil.json.JSONSerializable;
