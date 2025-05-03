@@ -30,7 +30,7 @@ public class SRTS extends DatagramSocket {
 
         //Encryption here
         EncryptPayload encryptPayload = new EncryptPayload();
-        byte[] encryptedPayload = encryptPayload.encrypt(buff,ptSize,key,hMacKey,algorithm);
+        byte[] encryptedPayload = encryptPayload.encrypt(buff,key);
 
         //Merging everything
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
@@ -46,13 +46,11 @@ public class SRTS extends DatagramSocket {
 
         //Get the full packet
         byte[] packet = inPacket.getData();
-        byte[] ctSizeHeader = copyOfRange(packet,1,3);
-        int ctSize = ByteBuffer.wrap(ctSizeHeader).getShort();
 
-        byte[] encryptedBuff = copyOfRange(packet,3,packet.length);
+        byte[] encryptedBuff = java.util.Arrays.copyOfRange(packet, 1, packet.length);
 
         //Decription here
         EncryptPayload encryptPayload = new EncryptPayload();
-        return encryptPayload.decrypt(ctSize,encryptedBuff,key,hMacKey,algorithm);
+        return encryptPayload.decrypt(encryptedBuff,key);
     }
 }
