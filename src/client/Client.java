@@ -8,6 +8,7 @@ import java.security.SecureRandom;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -285,10 +286,10 @@ public class Client {
             SecretKey aesKey = aesKeyGen.generateKey();
     
             // 3. Generate AES IV
+            byte[] rawIV = new byte[12];
             SecureRandom rand = new SecureRandom();
-            byte[] rawIV = new byte[16];
             rand.nextBytes(rawIV);
-            IvParameterSpec iv = new IvParameterSpec(rawIV);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, rawIV); // 128-bit auth tag
     
             // 4. Encrypt AES key with public key
             Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");

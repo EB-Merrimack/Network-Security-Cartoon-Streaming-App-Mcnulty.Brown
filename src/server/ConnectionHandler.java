@@ -134,34 +134,36 @@ public class ConnectionHandler implements Runnable {
          * 
          * @param msg the CreateMessage received from the client
          */
-    private void handleCreateMessage(Message msg) {
-        try {
-            System.out.println("[SERVER] Handling CreateMessage");
-    
-            // Safe cast
-            common.protocol.user_creation.UserCreationRequest createMsg = 
-                (common.protocol.user_creation.UserCreationRequest) msg;
-    
-            String username = createMsg.getUsername();
-            String password = createMsg.getPassword();
-            String publicKey = createMsg.getPublicKey();
-            String encryptedAESKey= createMsg.getEncryptedAESKey();
-            String aesIV= createMsg.getAesIV();
-            String userfile = Configuration.getUsersFile();
-    
-            System.out.println("[SERVER] Creating account for: " + username);
-    
-            // Call account creation logic
-            common.protocol.messages.StatusMessage response =
-                common.protocol.user_creation.CreateAccount.createAccount(username, password, publicKey, userfile, aesIV, encryptedAESKey);
-    
-            // Send the response back to the client
-            channel.sendMessage(response);
-    
-        } catch (Exception e) {
-            e.printStackTrace();
+        private void handleCreateMessage(Message msg) {
+            try {
+                System.out.println("[SERVER] Handling CreateMessage");
+        
+                UserCreationRequest createMsg = (UserCreationRequest) msg;
+        
+                String username = createMsg.getUsername();
+                String password = createMsg.getPassword();
+                String publicKey = createMsg.getPublicKey();
+                String encryptedAESKey = createMsg.getEncryptedAESKey();
+                String aesIV = createMsg.getAesIV();
+                String userfile = Configuration.getUsersFile();
+        
+                System.out.println("[SERVER] Creating account for: " + username);
+                System.out.println("[SERVER] AES IV: " + aesIV);
+                System.out.println("[SERVER] Encrypted AES Key: " + encryptedAESKey);
+                System.out.println("[SERVER] Users file: " + userfile);
+        
+                StatusMessage response = CreateAccount.createAccount(
+                    username, password, publicKey,
+                    encryptedAESKey, aesIV, userfile
+                );
+        
+                channel.sendMessage(response);
+        
+            } catch (Exception e) {
+                System.err.println("[SERVER] Error handling account creation:");
+                e.printStackTrace();
+            }
         }
-    }
       
     
     
