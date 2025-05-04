@@ -2,6 +2,7 @@ package server;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,14 +15,14 @@ public class videodatabase {
     private static final String DATABASE_FILE = "videos.json";
 
     // Method to insert a video into the "database" (a JSON file)
-    public static void insertVideo(String videoPath, String videoName, String videoCategory, String videoAgeRating) {
+    public static void insertVideo(Path encryptedPath, String videoName, String videoCategory, String videoAgeRating) {
         try {
             // Load existing video list or create a new one
             List<JSONObject> videoList = loadDatabase();
 
             // Create a new video entry
             JSONObject newVideo = new JSONObject();
-            newVideo.put("videoPath", videoPath);
+            newVideo.put("encryptedPath", encryptedPath.toString());  // <-- Save the encrypted path
             newVideo.put("videoName", videoName);
             newVideo.put("videoCategory", videoCategory);
             newVideo.put("videoAgeRating", videoAgeRating);

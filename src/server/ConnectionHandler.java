@@ -4,6 +4,7 @@ package server;
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import server.Configuration;
@@ -151,12 +152,14 @@ public class ConnectionHandler implements Runnable {
         String videoAgeRating = adminInsertVideoRequest.getAgerating();
         
         System.out.println("[SERVER] Inserting video: " + videoName);
-        
-        videodatabase.insertVideo(videoPath, videoName, videoCategory, videoAgeRating);
+        // Encrypt the video first
+     Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
+        Path encryptedPath = protector.protectContent(new File(videoPath));  // <-- Save the returned encrypted path
+
+        videodatabase.insertVideo(encryptedPath, videoName, videoCategory, videoAgeRating);
         
         System.out.println("[SERVER] Video inserted.");
-        Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
-        protector.protectContent(new File(videoPath));
+       
         
         channel.sendMessage(new StatusMessage(true, "Video inserted."));
        

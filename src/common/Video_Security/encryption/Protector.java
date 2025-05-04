@@ -23,7 +23,13 @@ public class Protector {
         this.aesIV = Base64.getDecoder().decode(base64IV);
     }
 
-    public void protectContent(File inputFile) throws Exception {
+    /**
+     * Encrypts the input file and saves it.
+     * @param inputFile The file to encrypt.
+     * @return The Path where the encrypted file was saved.
+     * @throws Exception if something goes wrong.
+     */
+    public Path protectContent(File inputFile) throws Exception {
         byte[] fileData = Files.readAllBytes(inputFile.toPath());
         byte[] encryptedContent = CryptoUtils.encrypt(fileData, aesKey, aesIV);
 
@@ -44,5 +50,6 @@ public class Protector {
         Files.write(outputPath, outputData);
 
         System.out.println("Encrypted content (IV + ciphertext) saved to: " + outputPath.toAbsolutePath());
+        return outputPath;
     }
 }
