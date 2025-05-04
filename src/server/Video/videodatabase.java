@@ -42,7 +42,7 @@ public class videodatabase {
         List<Video> videoList = new ArrayList<>();
 
         if (dbFile.exists()) {
-            JSONObject root = (JSONObject) JSONParser.parse(dbFile);
+            JSONObject root = JsonIO.readObject(new File(DATABASE_FILE));
             JSONArray videos = root.getArray("videos");
             if (videos != null) {
                 for (Object entry : videos) {
