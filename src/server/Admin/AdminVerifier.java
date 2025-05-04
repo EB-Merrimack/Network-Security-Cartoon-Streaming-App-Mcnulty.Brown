@@ -1,4 +1,4 @@
-package server;
+package server.Admin;
 
 import java.io.File;
 import java.io.IOException;

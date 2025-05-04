@@ -3,24 +3,20 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import javax.crypto.SecretKey;
+import server.Admin.AdminVerifier;
 import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
-import common.CryptoUtils;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
 import merrimackutil.json.JsonIO;
 import merrimackutil.json.types.JSONObject;
 import merrimackutil.util.NonceCache;
 import merrimackutil.util.Tuple;
+
 
 // DRM logic example
 public class DRMSystem {
@@ -130,8 +126,7 @@ public class DRMSystem {
           // Verify the root admin before starting the server
         
             String adminFilePath = config.getAdminFile();  // Assuming admin.json is in the config directory
-            AdminVerifier.verifyAdminFile(adminFilePath);
-            if (!AdminVerifier.verifyAdminFile("src/server/admin.json")) {
+            if (!AdminVerifier.verifyAdminFile(adminFilePath)) {
                 System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
                 System.exit(1); // Exit immediately with error code 1 (nonzero means failure)
             }

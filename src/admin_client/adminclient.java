@@ -29,13 +29,13 @@ public class adminclient {
     // usage help
     public static void usage() {
         System.out.println("usage:");
-        System.out.println("  adminclient -i --insertvideo -u <user> -h <host> -p <portnum> -v <filename>");
+        System.out.println("  adminclient -i -u <user> -h <host> -p <portnum> -v <filepath>");
         System.out.println("options:");
         System.out.println("  -i, --insertvideo   Insert a new video into the server.");
         System.out.println("  -u, --user          Username.");
         System.out.println("  -h, --host          Server hostname.");
         System.out.println("  -p, --port          Server port number.");
-        System.out.println("  -v, --videofile     Video file to upload.");
+        System.out.println("  -v, --videofile     Path toVideo file to upload.");
         System.exit(1);
     }
 

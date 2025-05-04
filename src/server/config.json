@@ -5,5 +5,5 @@
   "keystore-pass":"test12345",
   "Videofolder":"src/server/cartoons",
   "videoDatabase":"src/server/videos.json",
-  "admin-file":"src/server/admin.json"
+  "admin-file":"src/server/admin/admin.json"
 }
