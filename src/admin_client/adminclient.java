@@ -80,7 +80,9 @@ public class adminclient {
     // main logic
     public static void main(String[] args) throws Exception {
         Security.addProvider(new BouncyCastleProvider());
-
+        System.setProperty("javax.net.ssl.trustStore", "truststore.jks");
+        System.setProperty("javax.net.ssl.trustStorePassword", "test12345");
+    
         processArgs(args);
 
         if (!authenticateUser()) {
