@@ -20,6 +20,7 @@ public class Configuration implements JSONSerializable
   private String keystorePass;
   private String configDir;
   private static String adminFile;
+  private static String videoDatabase; 
 
   
 
@@ -42,10 +43,16 @@ public class Configuration implements JSONSerializable
     return this.port;
   }
 
-  public String getAdminFile() {
+  public static String getAdminFile() {
     return adminFile;
   }
-
+  /**
+     * Get the path to the video database file.
+     * @return the file path as a string.
+     */
+    public static String getVideoDatabase() {
+      return videoDatabase;
+  }
 
   /**
    * Get the path to the users database file.
@@ -101,7 +108,7 @@ public class Configuration implements JSONSerializable
       JSONObject config;
       String[] keys = {
           "port", "users-file", "Videofolder",
-          "keystore-file", "keystore-pass", "admin-file"
+          "keystore-file", "keystore-pass", "admin-file", "videoDatabase"
       };
   
       if (obj.isObject())
@@ -116,6 +123,7 @@ public class Configuration implements JSONSerializable
           keystoreFile = config.getString("keystore-file");
           keystorePass = config.getString("keystore-pass");
           adminFile = config.getString("admin-file");
+          videoDatabase = config.getString("videoDatabase");
       }
   
           
@@ -141,7 +149,7 @@ public class Configuration implements JSONSerializable
     obj.put("keystore-file", keystoreFile);
     obj.put("keystore-pass", keystorePass);
     obj.put("admin-file", adminFile);
-
+    obj.put("videoDatabase", videoDatabase);
     return obj;
   }
 }

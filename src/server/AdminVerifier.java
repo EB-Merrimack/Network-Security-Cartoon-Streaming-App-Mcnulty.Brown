@@ -10,7 +10,7 @@ import java.util.Base64;
 public class AdminVerifier {
 
     
-    private static final String HASH_PATH = "src/server/admin.json.sha256";
+    private static final String HASH_PATH = "src/server/Admin/admin.json.sha256";
 
     public static boolean verifyAdminFile(String adminFilePath) {
         try {

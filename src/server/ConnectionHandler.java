@@ -1,15 +1,21 @@
 
 package server;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-
+import server.Configuration;
+import server.Admin.Admin;
+import server.Video.videodatabase;
+import common.Video_Security.encryption.Protector;
 import common.protocol.Message;
 import common.protocol.user_creation.CreateAccount;
 import common.protocol.user_creation.UserCreationRequest;
 import common.protocol.ProtocolChannel;
+import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.PubKeyRequest;
 import common.protocol.messages.StatusMessage;
@@ -42,6 +48,7 @@ public class ConnectionHandler implements Runnable {
         this.channel = new ProtocolChannel(sock);
         this.channel.addMessageType(new common.protocol.user_creation.UserCreationRequest());
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
+        this.channel.addMessageType(new common.protocol.messages.AdminInsertVideoRequest());
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new PubKeyRequest());
   
@@ -111,6 +118,12 @@ public class ConnectionHandler implements Runnable {
             System.out.println("[SERVER] Public key sent.");
 
         }
+        else if (msg.getType().equals("AdminInsertVideoRequest")) {
+            System.out.println("[SERVER] Received AdminInsertVideoRequest.");
+            // Handle AdminInsertVideoRequest
+            handleAdminInsertVideoRequest(msg);
+            return;
+        }
          else {
             System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
         }
@@ -123,6 +136,36 @@ public class ConnectionHandler implements Runnable {
 
             
        
+
+        private void handleAdminInsertVideoRequest(Message msg) throws Exception {
+        
+        if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
+            System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
+            System.exit(1); // Exit immediately with error code 1 (nonzero means failure)
+        }
+       
+        
+        AdminInsertVideoRequest adminInsertVideoRequest = (AdminInsertVideoRequest) msg;
+        
+        String videoPath = adminInsertVideoRequest.getVideofile();
+        String videoName = adminInsertVideoRequest.getVideoname();
+        String videoCategory = adminInsertVideoRequest.getCategory();
+        String videoAgeRating = adminInsertVideoRequest.getAgerating();
+        
+        System.out.println("[SERVER] Inserting video: " + videoName);
+        // Encrypt the video first
+     Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
+        Path encryptedPath = protector.protectContent(new File(videoPath));  // <-- Save the returned encrypted path
+
+        videodatabase.insertVideo(encryptedPath, videoName, videoCategory, videoAgeRating);
+        
+        System.out.println("[SERVER] Video inserted.");
+       
+        
+        channel.sendMessage(new StatusMessage(true, "Video inserted."));
+       
+        
+     }
 
         /**
          * Handles a CreateMessage sent by the client. Creates a new user account using the

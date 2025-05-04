@@ -67,7 +67,6 @@
     <jar jarfile="${dist}/root_user.jar" basedir="${build}">
       <exclude name="client/"/>
       <exclude name="admin_client/"/>
-      <exclude name="server/"/>
       <manifest>
         <attribute name="Main-Class" value="root_user.AdminEnhancement" />
         <attribute name="Class-Path" value="bcprov.jar" />

@@ -15,6 +15,7 @@ import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
 import common.CryptoUtils;
+import common.Video_Security.encryption.KeyManager;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
 import merrimackutil.json.JsonIO;
@@ -161,35 +162,5 @@ public class DRMSystem {
         }
     }
 
-    public void protectContent(File inputFile) throws Exception {
-        SecretKey key = KeyManager.generateKey();
-        byte[] fileData = Files.readAllBytes(inputFile.toPath());
-        byte[] encryptedContent = CryptoUtils.encrypt(fileData, key);
-
-        // Use configured video folder
-        Path videoDir = Paths.get(Configuration.getVideofolder());
-        if (!Files.exists(videoDir)) {
-            Files.createDirectories(videoDir);
-        }
-
-        // Save the encrypted file with same name but .enc extension
-        String outputFileName = inputFile.getName() + ".enc";
-        Path outputPath = videoDir.resolve(outputFileName);
-        Files.write(outputPath, encryptedContent);
-
-        System.out.println("Encrypted content saved to: " + outputPath.toAbsolutePath());
-    }
-    public void decryptContent(File inputFile, SecretKey key) throws Exception {
-        // Read the encrypted content from the file
-        byte[] encryptedData = Files.readAllBytes(inputFile.toPath());
-        
-        // Decrypt the content
-        String decryptedData = CryptoUtils.decrypt(encryptedData, key);
-
-        // Save the decrypted content to a new file (for testing)
-        File decryptedFile = new File("decrypted_" + inputFile.getName());
-        Files.write(decryptedFile.toPath(), decryptedData.getBytes());
-        
-        System.out.println("File decrypted and saved as: " + decryptedFile.getName());
-    }
+ 
 }
