@@ -1,14 +1,16 @@
 package admin_client;
 
 import java.io.Console;
+import java.io.File;
+import java.nio.file.Files;
+import java.util.Scanner;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.security.Security;
-import java.util.Scanner;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.util.Objects;
 
+import common.protocol.Message;
 import common.protocol.ProtocolChannel;
 import common.protocol.messages.*;
 
@@ -17,16 +19,14 @@ import merrimackutil.cli.OptionParser;
 import merrimackutil.util.Tuple;
 
 public class adminclient {
-    // Global variables
     private static ProtocolChannel channel = null;
     private static String user;
     private static String host;
     private static int port;
     private static boolean insertvideo = false;
     private static String videofile;
-    private static final Objects mapper = new Objects();
 
-    // Print usage/help
+    // usage help
     public static void usage() {
         System.out.println("usage:");
         System.out.println("  adminclient -i --insertvideo -u <user> -h <host> -p <portnum> -v <filename>");
@@ -38,96 +38,153 @@ public class adminclient {
         System.out.println("  -v, --videofile     Video file to upload.");
         System.exit(1);
     }
-    
 
-  // Parse command-line arguments
-public static void processArgs(String[] args) throws Exception {
-    if (args.length == 0) {
-        usage();
-    }
+    // parse arguments
+    public static void processArgs(String[] args) throws Exception {
+        if (args.length == 0) {
+            usage();
+        }
 
-    OptionParser parser;
-    LongOption[] opts = new LongOption[6];
-    opts[0] = new LongOption("insertvideo", false, 'i');
-    opts[1] = new LongOption("user", true, 'u');
-    opts[2] = new LongOption("host", true, 'h');
-    opts[3] = new LongOption("port", true, 'p');
-    opts[4] = new LongOption("videofile", true, 'v');
+        OptionParser parser;
+        LongOption[] opts = new LongOption[5];
+        opts[0] = new LongOption("insertvideo", false, 'i');
+        opts[1] = new LongOption("user", true, 'u');
+        opts[2] = new LongOption("host", true, 'h');
+        opts[3] = new LongOption("port", true, 'p');
+        opts[4] = new LongOption("videofile", true, 'v');
 
-    parser = new OptionParser(args);
-    parser.setLongOpts(opts);
-    parser.setOptString("iu:w:h:p:v:");
+        parser = new OptionParser(args);
+        parser.setLongOpts(opts);
+        parser.setOptString("iu:h:p:v:");
 
-    Tuple<Character, String> currOpt;
-    while (parser.getOptIdx() != args.length) {
-        currOpt = parser.getLongOpt(false);
+        Tuple<Character, String> currOpt;
+        while (parser.getOptIdx() != args.length) {
+            currOpt = parser.getLongOpt(false);
 
-        switch (currOpt.getFirst()) {
-            case 'i': insertvideo = true; break;
-            case 'u': user = currOpt.getSecond(); break;
-            case 'h': host = currOpt.getSecond(); break;
-            case 'p': port = Integer.parseInt(currOpt.getSecond()); break;
-            case 'v': videofile = currOpt.getSecond(); break;
-            case '?':
-            default: usage(); break;
+            switch (currOpt.getFirst()) {
+                case 'i': insertvideo = true; break;
+                case 'u': user = currOpt.getSecond(); break;
+                case 'h': host = currOpt.getSecond(); break;
+                case 'p': port = Integer.parseInt(currOpt.getSecond()); break;
+                case 'v': videofile = currOpt.getSecond(); break;
+                case '?':
+                default: usage(); break;
+            }
+        }
+
+        if (!insertvideo || user == null || host == null || port == 0 || videofile == null) {
+            usage();
         }
     }
 
-    // Friendlier required argument check
-    if (!insertvideo) {
-        System.out.println("Error: missing -i / --insertvideo option.");
-        usage();
-    }
-    if (user == null) {
-        System.out.println("Error: missing -u / --user option.");
-        usage();
-    }
-    if (host == null) {
-        System.out.println("Error: missing -h / --host option.");
-        usage();
-    }
-    if (port == 0) {
-        System.out.println("Error: missing or invalid -p / --port option.");
-        usage();
-    }
-    if (videofile == null) {
-        System.out.println("Error: missing -v / --videofile option.");
-        usage();
-    }
-}
-public static void main(String[] args) throws Exception {
-    // Add BouncyCastle provider
-    Security.addProvider(new BouncyCastleProvider());
+    // main logic
+    public static void main(String[] args) throws Exception {
+        Security.addProvider(new BouncyCastleProvider());
 
-    // Parse command-line arguments
-    processArgs(args);
+        processArgs(args);
 
-    // Ask user for password (no echo)
-    Console console = System.console();
-    String password;
-    if (console != null) {
-        char[] passwordChars = console.readPassword("Enter your password: ");
-        password = new String(passwordChars);
-    } else {
-        // fallback if System.console() is null
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Enter your password: ");
-        password = scanner.nextLine();
+        if (!authenticateUser()) {
+            System.out.println("[ERROR] Authentication failed. Exiting.");
+            System.exit(1);
+        }
+
+        System.out.println("[INFO] Authentication successful!");
+
+        // After login, upload the video
+        sendVideoFile();
     }
 
-    // Connect to server
-    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-    channel = new ProtocolChannel(socket);
+    // authenticate admin
+    private static boolean authenticateUser() throws Exception {
+        Console console = System.console();
+        String password;
+        String otp;
 
-    // Create and send login + video upload request
-    AdminInsertVideoRequest request = new AdminInsertVideoRequest(user, password, videofile);
+        if (console != null) {
+            char[] passwordChars = console.readPassword("Enter password: ");
+            password = new String(passwordChars);
+            otp = console.readLine("Enter OTP: ");
+        } else {
+            Scanner scanner = new Scanner(System.in);
+            System.out.print("Enter password: ");
+            password = scanner.nextLine();
+            System.out.print("Enter OTP: ");
+            otp = scanner.nextLine();
+        }
+
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
+
+        channel = new ProtocolChannel(socket);
+        channel.addMessageType(new StatusMessage());
+        channel.addMessageType(new AuthenticateMessage());
+        channel.addMessageType(new AdminInsertVideoRequest());
+
+        AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
+        channel.sendMessage(authMsg);
+
+        Message response = channel.receiveMessage();
+        if (!(response instanceof StatusMessage)) {
+            System.out.println("[ERROR] Unexpected response: " + response.getClass().getName());
+            return false;
+        }
+
+        StatusMessage status = (StatusMessage) response;
+        return status.getStatus();
+    }
+
+    // send video after authentication
+   // send video after authentication
+private static void sendVideoFile() throws Exception {
+    File file = new File(videofile);
+    if (!file.exists()) {
+        System.out.println("[ERROR] Video file not found: " + videofile);
+        System.exit(1);
+    }
+
+    // Request video name from the user
+    Scanner scanner = new Scanner(System.in);
+    System.out.print("Enter video name (or '1' to set it to null): ");
+    String videoname = scanner.nextLine();
+    if (videoname.equals("1")) {
+        videoname = null;
+    }
+
+    // Request video category from the user
+    System.out.print("Enter video category (or '1' to set it to null): ");
+    String category = scanner.nextLine();
+    if (category.equals("1")) {
+        category = null;
+    }
+
+    // Request video age rating from the user
+    System.out.print("Enter video age rating (or '1' to set it to null): ");
+    String agerating = scanner.nextLine();
+    if (agerating.equals("1")) {
+        agerating = null;
+    }
+
+    // Send AdminInsertVideoRequest with the collected information
+    AdminInsertVideoRequest request = new AdminInsertVideoRequest(videofile, videoname, category, agerating);
     channel.sendMessage(request);
 
-    // Done: exit immediately after sending
+    System.out.println("[INFO] Video upload request sent: " + videofile);
+// Wait for server acknowledgment
+Message resp = channel.receiveMessage();
+
+// Check if the response is of type StatusMessage (success or failure)
+if (resp instanceof StatusMessage) {
+    StatusMessage statusMessage = (StatusMessage) resp;
+    
+    // If status is true, the operation was successful
+    if (statusMessage.getStatus()) {
+        System.out.println("[INFO] Video upload successful.");
+    } else {
+        System.out.println("[ERROR] Video upload failed.");
+    }
+} else {
+    System.out.println("[ERROR] Unexpected response type: " + resp.getClass().getName());
 }
-
-
-
-
+}
 }

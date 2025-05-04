@@ -1,4 +1,4 @@
-package root_user;
+package server.Admin;
 
 import merrimackutil.json.JSONSerializable;
 import merrimackutil.json.types.JSONType;
@@ -12,8 +12,8 @@ public class Admin implements JSONSerializable {
     private String totpKey;
     private String user;
     private  String pubkey;
-    private String encryptedAESKey;
-    private String aesIV;
+    private static String encryptedAESKey;
+    private static String aesIV;
 
     public Admin() {}
 
@@ -33,8 +33,8 @@ public class Admin implements JSONSerializable {
     public String getTotpKey() { return totpKey; }
     public String getUser() { return user; }
     public String getPubkey() { return pubkey; }
-    public String getEncryptedAESKey() { return encryptedAESKey; }
-    public String getAesIV() { return aesIV; }
+    public static String getEncryptedAESKey() { return encryptedAESKey; }
+    public static String getAesIV() { return aesIV; }
 
     @Override
     public void deserialize(JSONType obj) throws InvalidObjectException {

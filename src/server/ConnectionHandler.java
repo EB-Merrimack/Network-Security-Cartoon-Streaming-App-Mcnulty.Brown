@@ -1,11 +1,14 @@
 
 package server;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import server.Configuration;
+import server.Admin.Admin;
+import common.Video_Security.encryption.Protector;
 import common.protocol.Message;
 import common.protocol.user_creation.CreateAccount;
 import common.protocol.user_creation.UserCreationRequest;
@@ -132,23 +135,30 @@ public class ConnectionHandler implements Runnable {
             
        
 
-        private void handleAdminInsertVideoRequest(Message msg) {
+        private void handleAdminInsertVideoRequest(Message msg) throws Exception {
         
         if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
             System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
             System.exit(1); // Exit immediately with error code 1 (nonzero means failure)
         }
-        boolean success = AuthenticationHandler.authenticate((AuthenticateMessage) msg);
-
-        if (!success) {
-            channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
-            return;
-        }
+       
         
         AdminInsertVideoRequest adminInsertVideoRequest = (AdminInsertVideoRequest) msg;
         
-        String videoPath = adminInsertVideoRequest.getVideoPath();
+        String videoPath = adminInsertVideoRequest.getVideofile();
+        String videoName = adminInsertVideoRequest.getVideoname();
+        String videoCategory = adminInsertVideoRequest.getCategory();
+        String videoAgeRating = adminInsertVideoRequest.getAgerating();
         
+        System.out.println("[SERVER] Inserting video: " + videoName);
+        
+        videodatabase.insertVideo(videoPath, videoName, videoCategory, videoAgeRating);
+        
+        System.out.println("[SERVER] Video inserted.");
+        Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
+        protector.protectContent(new File(videoPath));
+        
+        channel.sendMessage(new StatusMessage(true, "Video inserted."));
        
         
      }

@@ -15,13 +15,13 @@ import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 
 import common.CryptoUtils;
+import common.Video_Security.encryption.KeyManager;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
 import merrimackutil.json.JsonIO;
 import merrimackutil.json.types.JSONObject;
 import merrimackutil.util.NonceCache;
 import merrimackutil.util.Tuple;
-import server.Video_Security.encryption.KeyManager;
 
 // DRM logic example
 public class DRMSystem {

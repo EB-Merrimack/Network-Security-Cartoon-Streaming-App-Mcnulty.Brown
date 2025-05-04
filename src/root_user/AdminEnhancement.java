@@ -8,6 +8,7 @@ package root_user;
 /* To compile, run in terminal: ava -jar .\dist\root_user.jar after compiling the root_user using the compile and dist build */
 
 import merrimackutil.json.types.JSONObject;
+import server.Admin.Admin;
 import merrimackutil.json.JSONSerializable;
 import merrimackutil.json.JsonIO;
 import java.io.File;
@@ -24,8 +25,8 @@ import java.util.Set;
 public class AdminEnhancement {
 
     // The path for storing the admin JSON file and its SHA-256 hash
-    private static final String FILE_PATH = "src/server/admin.json";
-    private static final String HASH_PATH = "src/server/admin.json.sha256";
+    private static final String FILE_PATH = "src/server/Admin/admin.json";
+    private static final String HASH_PATH = "src/server/Admin/admin.json.sha256";
 
     public static void main(String[] args) {
         try {

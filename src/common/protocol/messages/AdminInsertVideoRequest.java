@@ -5,29 +5,21 @@ import merrimackutil.json.types.*;
 import common.protocol.Message;
 
 public class AdminInsertVideoRequest implements Message, JSONSerializable {
-    private String user;
-    private String password;
     private String videofile;
+    private String videoname;
+    private String category;
+    private String agerating;
 
     // Constructor to initialize fields
-    public AdminInsertVideoRequest(String user, String password, String videofile) {
-        this.user = user;
-        this.password = password;
+    public AdminInsertVideoRequest(String videofile, String videoname, String category, String agerating) {
         this.videofile = videofile;
+        this.videoname = videoname;
+        this.category = category;
+        this.agerating = agerating;
     }
 
     public AdminInsertVideoRequest() {
-        //TODO Auto-generated constructor stub
-    }
-
-    // Getter for the username
-    public String getUser() {
-        return user;
-    }
-
-    // Getter for the password
-    public String getPassword() {
-        return password;
+        // Default constructor for deserialization
     }
 
     // Getter for the video file
@@ -35,19 +27,35 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
         return videofile;
     }
 
+    // Getter for the video name (title)
+    public String getVideoname() {
+        return videoname;
+    }
+
+    // Getter for the video category
+    public String getCategory() {
+        return category;
+    }
+
+    // Getter for the video age rating
+    public String getAgerating() {
+        return agerating;
+    }
+
     // Implementing getType from the Message interface
     @Override
     public String getType() {
-        return "AdminInsertVideoRequest"; // You can change this string if you need a different type identifier
+        return "AdminInsertVideoRequest"; // Type identifier
     }
 
     // Implementing decode from the Message interface
     @Override
     public Message decode(JSONObject jsonObject) {
-        this.user = jsonObject.getString("user");
-        this.password = jsonObject.getString("password");
         this.videofile = jsonObject.getString("videofile");
-        return new AdminInsertVideoRequest(user, password, videofile);
+        this.videoname = jsonObject.getString("videoname");
+        this.category = jsonObject.getString("category");
+        this.agerating = jsonObject.getString("agerating");
+        return new AdminInsertVideoRequest(videofile, videoname, category, agerating);
     }
 
     // Implementing toJSONType from the JSONSerializable interface
@@ -55,9 +63,10 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
     public JSONType toJSONType() {
         JSONObject json = new JSONObject();
         json.put("type", getType());
-        json.put("user", user);
-        json.put("password", password);
-        json.put("videofile",videofile);
+        json.put("videofile", videofile);
+        json.put("videoname", videoname);
+        json.put("category", category);
+        json.put("agerating", agerating);
         return json;
     }
 
@@ -74,19 +83,10 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
     @Override
     public String toString() {
         return "AdminInsertVideoRequest{" +
-                "user='" + user + '\'' +
-                ", password='" + password + '\'' +
-                ", videofile='" + videofile + '\'' +
+                "videofile='" + videofile + '\'' +
+                ", videoname='" + videoname + '\'' +
+                ", category='" + category + '\'' +
+                ", agerating='" + agerating + '\'' +
                 '}';
-    }
-
-    public String getVideoName() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getVideoName'");
-    }
-
-    public String getVideoPath() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getVideoPath'");
     }
 }
