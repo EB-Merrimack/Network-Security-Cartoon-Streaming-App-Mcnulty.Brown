@@ -169,6 +169,7 @@ public class Client {
 
     // Download file
     public static void download(String filename) throws Exception {
+        System.out.println("[INFO] Downloading video..."+filename);
         // 1. Open SSL socket
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
@@ -255,15 +256,22 @@ public class Client {
                     }
                     break;
     
-                case "2":
-                    System.out.print("Enter filename to download: ");
-                    String filename = scanner.nextLine().trim();
-                    System.out.println("[DEBUG] You entered: '" + filename + "'");
-                    if (!filename.isEmpty()) {
-                        download(filename);
-                    } else {
-                        System.out.println("[WARN] Filename cannot be empty.");
+                    case "2":
+                    
+                    
+                    String searchFilename = "";
+                    while (searchFilename.isEmpty()) {
+                        System.out.print("Enter filename to download: ");
+                        searchFilename = scanner.nextLine().trim();
+                        if (searchFilename.isEmpty()) {
+                            System.out.println("[WARN] Filename cannot be empty. Try again.");
+                        }
                     }
+                
+                    clearConsole();
+                    System.out.println("[DEBUG] You entered: _" + searchFilename + "_");
+                
+                    download(searchFilename);
                     break;
     
                 case "3":
@@ -378,4 +386,17 @@ public class Client {
             }
         }
     }
+    public static void clearConsole() {
+        try {
+            if (System.getProperty("os.name").contains("Windows")) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                System.out.print("\033[H\033[2J");
+                System.out.flush();
+            }
+        } catch (Exception e) {
+            System.out.println("Could not clear console.");
+        }
+    }
+    
 }
