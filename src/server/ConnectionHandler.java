@@ -66,6 +66,7 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.user_creation.UserCreationRequest());
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
         this.channel.addMessageType(new common.protocol.messages.AdminInsertVideoRequest());
+        this.channel.addMessageType(new common.protocol.messages.DownloadRequestMessage());
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new AdminAuth());
        

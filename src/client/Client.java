@@ -207,6 +207,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
         channel.addMessageType(new StatusMessage());
     
         // 3. Send request
+        System.out.println("[INFO] Sending download request...");
         DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user);
         channel.sendMessage(downloadMsg);
     
