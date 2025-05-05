@@ -47,8 +47,7 @@ public class Client {
     public static void usage() {
         System.out.println("usage:");
         System.out.println("  client --create --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --search <query> --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --download <filename> --user <user> --host <host> --port <portnum>");
+        System.out.println("  client --login --user <user> --host <host> --port <portnum>");
         System.out.println("options:");
         System.out.println("  -c, --create     Create a new account.");
         System.out.println("  -u, --user       Username.");
@@ -142,7 +141,7 @@ public class Client {
         channel.addMessageType(new SearchResponseMessage());
         channel.addMessageType(new StatusMessage());
 
-        SearchRequestMessage searchMsg = new SearchRequestMessage(query);
+        SearchRequestMessage searchMsg = new SearchRequestMessage();
         channel.sendMessage(searchMsg);
 
         Message response = channel.receiveMessage();
@@ -227,14 +226,33 @@ public class Client {
     
             switch (choice) {
                 case "1":
-                    System.out.print("Enter search query: ");
-                    String query = scanner.nextLine().trim();
-                    if (!query.isEmpty()) {
-                        search(query);
-                    } else {
-                        System.out.println("[WARN] Search query cannot be empty.");
-                    }
-                    break;
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
+            
+                System.out.print("Encrypted Path: ");
+                String encryptedPath = scanner.nextLine().trim();
+                if (encryptedPath.isEmpty()) encryptedPath = "null";
+            
+                System.out.print("Video Category: ");
+                String videoCategory = scanner.nextLine().trim();
+                if (videoCategory.isEmpty()) videoCategory = "null";
+            
+                System.out.print("Video Name: ");
+                String videoName = scanner.nextLine().trim();
+                if (videoName.isEmpty()) videoName = "null";
+            
+                System.out.print("Video Age Rating: ");
+                String videoAgeRating = scanner.nextLine().trim();
+                if (videoAgeRating.isEmpty()) videoAgeRating = "null";
+            
+                SearchRequestMessage message = new SearchRequestMessage(
+                    encryptedPath,
+                    videoCategory,
+                    videoName,
+                    videoAgeRating
+                );
+            
+                break;
+            
                 case "2":
                     System.out.print("Enter filename to download: ");
                     String filename = scanner.nextLine().trim();
