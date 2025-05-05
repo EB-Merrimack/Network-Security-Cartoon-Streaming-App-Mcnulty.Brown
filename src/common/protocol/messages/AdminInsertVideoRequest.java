@@ -5,13 +5,15 @@ import merrimackutil.json.types.*;
 import common.protocol.Message;
 
 public class AdminInsertVideoRequest implements Message, JSONSerializable {
+    private String user;
     private String videofile;
     private String videoname;
     private String category;
     private String agerating;
 
     // Constructor to initialize fields
-    public AdminInsertVideoRequest(String videofile, String videoname, String category, String agerating) {
+    public AdminInsertVideoRequest(String user, String videofile, String videoname, String category, String agerating) {
+        this.user = user;
         this.videofile = videofile;
         this.videoname = videoname;
         this.category = category;
@@ -42,6 +44,10 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
         return agerating;
     }
 
+    public String getUsername() {
+        return user;
+    }
+
     // Implementing getType from the Message interface
     @Override
     public String getType() {
@@ -51,11 +57,12 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
     // Implementing decode from the Message interface
     @Override
     public Message decode(JSONObject jsonObject) {
+        this.user = jsonObject.getString("user");
         this.videofile = jsonObject.getString("videofile");
         this.videoname = jsonObject.getString("videoname");
         this.category = jsonObject.getString("category");
         this.agerating = jsonObject.getString("agerating");
-        return new AdminInsertVideoRequest(videofile, videoname, category, agerating);
+        return new AdminInsertVideoRequest(user, videofile, videoname, category, agerating);
     }
 
     // Implementing toJSONType from the JSONSerializable interface
@@ -63,6 +70,7 @@ public class AdminInsertVideoRequest implements Message, JSONSerializable {
     public JSONType toJSONType() {
         JSONObject json = new JSONObject();
         json.put("type", getType());
+        json.put("user", user);
         json.put("videofile", videofile);
         json.put("videoname", videoname);
         json.put("category", category);

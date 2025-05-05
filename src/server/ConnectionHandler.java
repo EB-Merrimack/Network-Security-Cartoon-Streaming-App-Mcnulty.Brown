@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import server.Configuration;
 import server.Admin.Admin;
+import server.Admin.AdminAuthenticator;
+import server.Admin.AdminAuthenticator;
 import server.Admin.AdminVerifier;
 import server.Video.videodatabase;
 import common.Video_Security.encryption.Protector;
@@ -16,9 +18,9 @@ import common.protocol.Message;
 import common.protocol.user_creation.CreateAccount;
 import common.protocol.user_creation.UserCreationRequest;
 import common.protocol.ProtocolChannel;
+import common.protocol.messages.AdminAuth;
 import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
-import common.protocol.messages.PubKeyRequest;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.UserDatabase;
@@ -51,7 +53,8 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
         this.channel.addMessageType(new common.protocol.messages.AdminInsertVideoRequest());
         this.channel.addMessageType(new AuthenticateMessage());
-        this.channel.addMessageType(new PubKeyRequest());
+        this.channel.addMessageType(new AdminAuth());
+       
   
       
         this.doDebug = doDebug;
@@ -78,11 +81,13 @@ public class ConnectionHandler implements Runnable {
         try {
             while (true) {
                 System.out.println("[DEBUG] Waiting to receive a message...");
+                
                 Message msg = null;
     
                 try {
                     // Try to receive the message
                     msg = channel.receiveMessage();
+                    System.out.println("[DEBUG] Received message of type: " + msg.getType());
                 } catch (NullPointerException e) {
                     // If a NullPointerException occurs, log it and continue waiting for the next message
                     System.err.println("[ERROR] NullPointerException encountered while receiving message.");
@@ -105,19 +110,19 @@ public class ConnectionHandler implements Runnable {
                 channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
             }
             return;
-        } else if (msg.getType().equals("PubKeyRequest")) {
-            System.out.println("[SERVER] Received PubKeyRequest.");
-        
-            PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
-            String username = pubKeyRequest.getUser();  // Use getUser() here
-            System.out.println("[SERVER] Public key requested for user: " + username);
-        
-            String base64Key = UserDatabase.getEncodedPublicKey(username) ;  // You might want to change this to take a username
-            System.out.println("[SERVER] Sending public key (Base64): " + base64Key);
-        
-            channel.sendMessage((Message) new StatusMessage(true, base64Key));
-            System.out.println("[SERVER] Public key sent.");
+        }
+        else if (msg.getType().equals("AdminAuth")) {
+            System.out.println("[SERVER] Received AdminAuth.");
+            boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
 
+            if (success) {
+                channel.sendMessage(new StatusMessage(true, "Authentication successful."));
+                continue; // Continue waiting for the next message
+            } else {
+                channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
+                return;
+            }
+            
         }
         else if (msg.getType().equals("AdminInsertVideoRequest")) {
             System.out.println("[SERVER] Received AdminInsertVideoRequest.");
@@ -138,35 +143,39 @@ public class ConnectionHandler implements Runnable {
             
        
 
-        private void handleAdminInsertVideoRequest(Message msg) throws Exception {
-        
-        if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
-            System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
-            System.exit(1); // Exit immediately with error code 1 (nonzero means failure)
-        }
-       
-        
-        AdminInsertVideoRequest adminInsertVideoRequest = (AdminInsertVideoRequest) msg;
-        
-        String videoPath = adminInsertVideoRequest.getVideofile();
-        String videoName = adminInsertVideoRequest.getVideoname();
-        String videoCategory = adminInsertVideoRequest.getCategory();
-        String videoAgeRating = adminInsertVideoRequest.getAgerating();
-        
-        System.out.println("[SERVER] Inserting video: " + videoName);
-        // Encrypt the video first
-     Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
-        Path encryptedPath = protector.protectContent(new File(videoPath));  // <-- Save the returned encrypted path
+private void handleAdminInsertVideoRequest(Message msg) throws Exception {
+    if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
+        System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
+        System.exit(1);
+    }
 
-        videodatabase.insertVideo(encryptedPath, videoName, videoCategory, videoAgeRating);
-        
-        System.out.println("[SERVER] Video inserted.");
-       
-        
-        channel.sendMessage(new StatusMessage(true, "Video inserted."));
-       
-        
-     }
+    AdminInsertVideoRequest req = (AdminInsertVideoRequest) msg;
+    String username = req.getUsername(); // this MUST be added to your request object
+
+    System.out.println("[SERVER] Video upload requested by: " + username);
+
+    // Use the admin.json check, not UserDatabase
+    if (!Admin.isAdmin(username)) {
+        System.out.println("[SERVER] User is not an admin: " + username);
+        channel.sendMessage(new StatusMessage(false, "Permission denied: not an admin."));
+        return;
+    }
+
+    String videoPath = req.getVideofile();
+    String videoName = req.getVideoname();
+    String videoCategory = req.getCategory();
+    String videoAgeRating = req.getAgerating();
+
+    System.out.println("[SERVER] Inserting video: " + videoName);
+    
+    Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
+    Path encryptedPath = protector.protectContent(new File(videoPath));
+
+    videodatabase.insertVideo(encryptedPath, videoName, videoCategory, videoAgeRating);
+
+    System.out.println("[SERVER] Video inserted.");
+    channel.sendMessage(new StatusMessage(true, "Video inserted."));
+}
 
         /**
          * Handles a CreateMessage sent by the client. Creates a new user account using the

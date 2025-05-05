@@ -1,19 +1,26 @@
 package server.Admin;
 
 import merrimackutil.json.JSONSerializable;
+import merrimackutil.json.JsonIO;
 import merrimackutil.json.types.JSONType;
+import merrimackutil.json.types.JSONArray;
 import merrimackutil.json.types.JSONObject;
 
+import java.io.File;
 import java.io.InvalidObjectException;
+import java.io.IOException;
 
 public class Admin implements JSONSerializable {
     private String salt;
     private String pass;
     private String totpKey;
     private String user;
-    private  String pubkey;
+    private String pubkey;
     private static String encryptedAESKey;
     private static String aesIV;
+
+    // Static admin instance
+    private static Admin instance;
 
     public Admin() {}
 
@@ -64,32 +71,63 @@ public class Admin implements JSONSerializable {
         return json;
     }
 
-public void put(String key, String value) {
-    switch (key) {
-        case "salt":
-            this.salt = value;
-            break;
-        case "pass":
-            this.pass = value;
-            break;
-        case "totp-key":
-            this.totpKey = value;
-            break;
-        case "user":
-            this.user = value;
-            break;
-        case "pubkey":
-            this.pubkey = value;
-            break;
-        case "encryptedAESKey":
-            this.encryptedAESKey = value;
-            break;
-        case "aesIV":
-            this.aesIV = value;
-            break;
-        default:
-            throw new IllegalArgumentException("Invalid key: " + key);
-    }
-}
+    // Update a field
+    public void put(String key, String value) {
+        switch (key) {
+            case "salt":
+                this.salt = value;
+                break;
+            case "pass":
+                this.pass = value;
+                break;
+            case "totp-key":
+                this.totpKey = value;
+                break;
+            case "user":
+                this.user = value;
+                break;
+            case "pubkey":
+                this.pubkey = value;
+                break;
+            case "encryptedAESKey":
+                this.encryptedAESKey = value;
+                break;
+            case "aesIV":
+                this.aesIV = value;
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid key: " + key);
+        }
 
+    }
+
+  
+
+    // Static method to check if user is admin
+    public static boolean isAdmin(String username) {
+        Admin admin = getInstance();
+        return admin != null && admin.getUser().equals(username);
+    }
+// Static method to load the Admin singleton
+public static Admin getInstance() {
+    if (instance == null) {
+        try {
+            File adminFile = new File(server.Configuration.getAdminFile());
+            JSONObject entry = (JSONObject) JsonIO.readObject(adminFile);
+
+            instance = new Admin(
+                entry.getString("salt"),
+                entry.getString("pass"),
+                entry.getString("totp-key"),
+                entry.getString("user"),
+                entry.getString("pubkey"),
+                entry.getString("encryptedAESKey"),
+                entry.getString("aesIV")
+            );
+        } catch (Exception e) {
+            System.err.println("[Admin] Error loading admin.json: " + e.getMessage());
+        }
+    }
+    return instance;
+}
 }

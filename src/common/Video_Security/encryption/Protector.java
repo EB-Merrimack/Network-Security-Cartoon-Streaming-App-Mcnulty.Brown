@@ -10,16 +10,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.security.PrivateKey;
 
 public class Protector {
 
     private final SecretKey aesKey;  // AES key ready to use
     private final byte[] aesIV;      // IV ready to use
 
-    public Protector(String base64AESKey, String base64IV) {
-        byte[] aesKeyBytes = Base64.getDecoder().decode(base64AESKey);
-        this.aesKey = new SecretKeySpec(aesKeyBytes, "AES");
+    public Protector(String base64EncryptedAESKey, String base64IV) throws Exception {
+        // Decode the encrypted AES key from Base64
+        byte[] decryptedAESKeyBytes = Base64.getDecoder().decode(base64EncryptedAESKey);
+        
+       
+        // Now create a proper AES SecretKey
+        this.aesKey = new SecretKeySpec(decryptedAESKeyBytes, "AES");
 
+        // Decode the IV normally
         this.aesIV = Base64.getDecoder().decode(base64IV);
     }
 
