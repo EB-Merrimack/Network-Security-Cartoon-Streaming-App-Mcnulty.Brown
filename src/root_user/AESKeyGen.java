@@ -1,4 +1,4 @@
-package admin_client;
+package root_user;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
