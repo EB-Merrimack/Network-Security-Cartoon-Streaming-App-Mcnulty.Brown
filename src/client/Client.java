@@ -42,6 +42,9 @@ public class Client {
     private static String searchQuery;
     private static String downloadFilename;
     private static final Objects mapper = new Objects();
+    private static long lastAuthTime = 0;
+private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
 
     // Print usage/help
     public static void usage() {
@@ -103,33 +106,46 @@ public class Client {
         if (console == null) {
             throw new IllegalStateException("Console is not available. Please run in a real terminal.");
         }
-
+    
         char[] passwordChars = console.readPassword("Enter password: ");
         String password = new String(passwordChars);
-
+    
         String otp = console.readLine("Enter OTP: ");
-
+    
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
-
+    
         channel = new ProtocolChannel(socket);
         channel.addMessageType(new StatusMessage());
         channel.addMessageType(new AuthenticateMessage());
-
+    
         AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
         channel.sendMessage(authMsg);
-
+    
         Message response = channel.receiveMessage();
         if (!(response instanceof StatusMessage)) {
             System.out.println("[ERROR] Unexpected response: " + response.getClass().getName());
             return false;
         }
-
+    
         StatusMessage status = (StatusMessage) response;
+        if (status.getStatus()) {
+            lastAuthTime = System.currentTimeMillis(); // <<< SET after successful login
+        }
         return status.getStatus();
     }
-
+    private static void checkAuthentication() throws Exception {
+        if (System.currentTimeMillis() - lastAuthTime > AUTH_TIMEOUT_MS) {
+            System.out.println("[INFO] Session expired. Re-authentication required.");
+            if (!authenticateUser()) {
+                System.out.println("[ERROR] Re-authentication failed. Exiting.");
+                System.exit(1);
+            }
+        }
+    }
+    
+    
     // Search available videos
     public static void search(String query) throws Exception {
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
@@ -226,34 +242,30 @@ public class Client {
     
             switch (choice) {
                 case "1":
-                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
-            
-                System.out.print("Encrypted Path: ");
-                String encryptedPath = scanner.nextLine().trim();
-                if (encryptedPath.isEmpty()) encryptedPath = "null";
-            
-                System.out.print("Video Category: ");
-                String videoCategory = scanner.nextLine().trim();
-                if (videoCategory.isEmpty()) videoCategory = "null";
-            
-                System.out.print("Video Name: ");
-                String videoName = scanner.nextLine().trim();
-                if (videoName.isEmpty()) videoName = "null";
-            
-                System.out.print("Video Age Rating: ");
-                String videoAgeRating = scanner.nextLine().trim();
-                if (videoAgeRating.isEmpty()) videoAgeRating = "null";
-            
-                SearchRequestMessage message = new SearchRequestMessage(
-                    encryptedPath,
-                    videoCategory,
-                    videoName,
-                    videoAgeRating
-                );
-            
-                break;
-            
+                    checkAuthentication(); // <<< add this
+                    System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
+                    System.out.print("Encrypted Path: ");
+                    String encryptedPath = scanner.nextLine().trim();
+                    if (encryptedPath.isEmpty()) encryptedPath = "null";
+    
+                    System.out.print("Video Category: ");
+                    String videoCategory = scanner.nextLine().trim();
+                    if (videoCategory.isEmpty()) videoCategory = "null";
+    
+                    System.out.print("Video Name: ");
+                    String videoName = scanner.nextLine().trim();
+                    if (videoName.isEmpty()) videoName = "null";
+    
+                    System.out.print("Video Age Rating: ");
+                    String videoAgeRating = scanner.nextLine().trim();
+                    if (videoAgeRating.isEmpty()) videoAgeRating = "null";
+    
+                    // Reconnect and send search
+                    search(encryptedPath);
+                    break;
+    
                 case "2":
+                    checkAuthentication(); // <<< add this
                     System.out.print("Enter filename to download: ");
                     String filename = scanner.nextLine().trim();
                     if (!filename.isEmpty()) {
@@ -262,17 +274,19 @@ public class Client {
                         System.out.println("[WARN] Filename cannot be empty.");
                     }
                     break;
+    
                 case "3":
                     System.out.println("Goodbye, " + user + "!");
                     System.exit(0);
                     break;
+    
                 default:
                     System.out.println("[ERROR] Invalid option. Please choose 1, 2, or 3.");
                     break;
             }
         }
     }
-
+    
     // Main entry point
     public static void main(String[] args) throws Exception {
         // Setup TLS and Bouncy Castle
