@@ -117,10 +117,12 @@ public class ConnectionHandler implements Runnable {
 
             if (success) {
                 channel.sendMessage(new StatusMessage(true, "Authentication successful."));
+                continue; // Continue waiting for the next message
             } else {
                 channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
+                return;
             }
-            return;
+            
         }
         else if (msg.getType().equals("AdminInsertVideoRequest")) {
             System.out.println("[SERVER] Received AdminInsertVideoRequest.");
