@@ -9,7 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import server.Configuration;
 import server.Admin.Admin;
-import server.Admin.AdminAuthenticationHandler;
+import server.Admin.AdminAuthenticator;
+import server.Admin.AdminAuthenticator;
 import server.Admin.AdminVerifier;
 import server.Video.videodatabase;
 import common.Video_Security.encryption.Protector;
@@ -80,11 +81,13 @@ public class ConnectionHandler implements Runnable {
         try {
             while (true) {
                 System.out.println("[DEBUG] Waiting to receive a message...");
+                
                 Message msg = null;
     
                 try {
                     // Try to receive the message
                     msg = channel.receiveMessage();
+                    System.out.println("[DEBUG] Received message of type: " + msg.getType());
                 } catch (NullPointerException e) {
                     // If a NullPointerException occurs, log it and continue waiting for the next message
                     System.err.println("[ERROR] NullPointerException encountered while receiving message.");
@@ -110,7 +113,7 @@ public class ConnectionHandler implements Runnable {
         }
         else if (msg.getType().equals("AdminAuth")) {
             System.out.println("[SERVER] Received AdminAuth.");
-            boolean success = AdminAuthenticationHandler.authenticate((AuthenticateMessage) msg);
+            boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
 
             if (success) {
                 channel.sendMessage(new StatusMessage(true, "Authentication successful."));

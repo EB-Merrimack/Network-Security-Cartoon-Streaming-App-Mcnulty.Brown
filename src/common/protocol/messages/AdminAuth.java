@@ -49,6 +49,8 @@ public class AdminAuth implements Message {
         return otp;
     }
 
+ 
+
 /**
  * Deserializes a JSON object into an AuthenticateMessage instance.
  *
@@ -86,21 +88,12 @@ public class AdminAuth implements Message {
         return obj;
     }
 
+   
     /**
-     * Gets the message type as a string.
-     * @return the message type as a string.
-     */
-    @Override
-    public String getType() {
-    
-        return "authenticate";
-    }
-
-    /**
-     * Decodes a JSON object into an AuthenticateMessage instance.
+     * Decodes a JSON object into an AdminAuth instance.
      *
      * @param obj the JSON object to decode
-     * @return an AuthenticateMessage instance
+     * @return an AdminAuth instance
      * @throws InvalidObjectException if the object is not a valid JSONObject
      */
     @Override
@@ -110,7 +103,7 @@ public class AdminAuth implements Message {
         String otp = obj.getString("otp");
 
        
-        return new AuthenticateMessage(user, pass, otp);
+        return new AdminAuth(user, pass, otp);
     }
 
     /**
@@ -119,6 +112,11 @@ public class AdminAuth implements Message {
      */
     @Override
     public String toString() {
-        return "[AuthenticateMessage] user=" + user + ", otp=" + otp;
+        return "[AdminAuth] user=" + user + ", otp=" + otp;
+    }
+
+    @Override
+    public String getType() {
+        return "AdminAuth";
     }
 }

@@ -85,10 +85,10 @@ public class adminclient {
     
         processArgs(args);
 
-        /*if (!authenticateUser()) {
+       if (!authenticateUser()) {
             System.out.println("[ERROR] Authentication failed. Exiting.");
             System.exit(1);
-        }*/
+        }
 
         System.out.println("[INFO] Authentication successful!");
 
@@ -120,11 +120,12 @@ public class adminclient {
 
         channel = new ProtocolChannel(socket);
         channel.addMessageType(new StatusMessage());
-        channel.addMessageType(new AuthenticateMessage());
+        channel.addMessageType(new AdminAuth());
         channel.addMessageType(new AdminInsertVideoRequest());
 
-        AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
+        AdminAuth authMsg = new AdminAuth(user, password, otp);
         channel.sendMessage(authMsg);
+        System.out.println("[INFO] Sent authentication message.");
 
         Message response = channel.receiveMessage();
         if (!(response instanceof StatusMessage)) {
