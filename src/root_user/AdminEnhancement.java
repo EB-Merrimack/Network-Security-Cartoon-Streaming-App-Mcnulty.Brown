@@ -32,11 +32,11 @@ public class AdminEnhancement {
         try {
             // Create the admin data JSONObject, containing secure, encrypted data for the root admin account
             Admin adminData = new Admin();
-            adminData.put("encryptedAESKey", "WxwosOa7VCuYn10dii+OnifHGewE8yO9bKgtWScktvGaP4SjBGiFXoQ4IFP01hPhOrGARhcitofi9COP8iG5O5lqwhd3sf7Bq9V6mkWS33zYT8+S8lf3uOAQ0ZUNwVJjWXDPSXbjvBJLT3oJdNPH0SMUmz9t8pBSWpNgjKBXwog=");
+            adminData.put("encryptedAESKey", "QLiyCHW66HSrwd2hL37K3A==");
             adminData.put("salt", "TS0CrZgpODsqSwbLfztUjw==");
             adminData.put("pass", "AEF+YKYSnOdoU9Dgi6Cfig==");
             adminData.put("totp-key", "hL2agdNt2STM/V6MScIGUetbpfK96sEmRPPLGgJ2gUJtrJhkBDY2A/Kh2RrWSGrJJL3D7rXHeWpHlApCXDUJsA==");
-            adminData.put("aesIV", "zOIwLu0fidM2DogQ");
+            adminData.put("aesIV", "ZUkp63iEL4pW4YQz");
             adminData.put("user", "eb_yes2025yay5");
             adminData.put("pubkey", "MIHYMIGQBgYrDgcCAQEwgYUCQQD8poLOjhLKuibvzPcRDlJtsHiwXt7LzR60ogjzrhYXrgHzW5Gkfm32NBPF4S7QiZvNEyrNUNmRUb3EPuc3WS4XAkBnhHGyepz0TukaScUUfbGpqvJE8FpDTWSGkx0tFCcbnjUDC3H9c9oXkGmzLik1Yw4cIGI1TQ2iCmxBblC+eUykA0MAAkA4o5p4br1Z8e8t95DFiZkw33YHCPsWwSYQZuhnDSIcMUDyz/buZEveo7hvAfztmBOJRH+VpsHiDiiYClT/uOg1");
 
