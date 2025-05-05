@@ -42,8 +42,12 @@ public class Client {
     private static String searchQuery;
     private static String downloadFilename;
     private static final Objects mapper = new Objects();
+
+    private static final Scanner scanner = new Scanner(System.in);
+
     private static long lastAuthTime = 0;
 private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
 
 
     // Print usage/help
@@ -190,54 +194,72 @@ public static void search(String encryptedPath, String videoCategory, String vid
 
     // Download file
     public static void download(String filename) throws Exception {
+        System.out.println("[INFO] Downloading video..."+filename);
+        // 1. Open SSL socket
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
-
+    
+        // 2. Setup channel and message types
         ProtocolChannel channel = new ProtocolChannel(socket);
         channel.addMessageType(new DownloadRequestMessage());
-        channel.addMessageType(new FileChunkMessage());
-        channel.addMessageType(new DownloadCompleteMessage());
+        channel.addMessageType(new DownloadResponseMessage());
         channel.addMessageType(new StatusMessage());
-
-        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename);
+    
+        // 3. Send request
+        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user);
         channel.sendMessage(downloadMsg);
-
-        java.io.FileOutputStream fileOut = new java.io.FileOutputStream(filename);
-
-        boolean finished = false;
-        int totalBytes = 0;
-
-        while (!finished) {
-            Message response = channel.receiveMessage();
-
-            if (response instanceof FileChunkMessage) {
-                FileChunkMessage chunk = (FileChunkMessage) response;
-                fileOut.write(chunk.getData());
-                totalBytes += chunk.getData().length;
-                if (chunk.isLastChunk()) {
-                    finished = true;
-                }
-            } else if (response instanceof DownloadCompleteMessage) {
-                finished = true;
-            } else if (response instanceof StatusMessage) {
-                System.out.println("[ERROR] Server reported: " + ((StatusMessage) response).getPayload());
-                break;
-            } else {
-                System.out.println("[ERROR] Unexpected response: " + response);
-                break;
-            }
+    
+        // 4. Receive server response
+        Message response = channel.receiveMessage();
+    
+        if (response instanceof DownloadResponseMessage) {
+            DownloadResponseMessage drm = (DownloadResponseMessage) response;
+    
+            System.out.println("[INFO] Received encrypted video.");
+    
+            // 5. Decode base64 fields
+            byte[] encryptedKey = Base64.getDecoder().decode(drm.getEncryptedAESKey());
+            byte[] iv = Base64.getDecoder().decode(drm.getIv());
+            byte[] ciphertext = Base64.getDecoder().decode(drm.getEncryptedVideo());
+    
+            // 6. Decrypt AES key using private key
+            Console console = System.console();
+            if (console == null) throw new IllegalStateException("Console not available.");
+            String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
+            byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
+    
+            java.security.spec.PKCS8EncodedKeySpec keySpec = new java.security.spec.PKCS8EncodedKeySpec(privKeyBytes);
+            java.security.KeyFactory keyFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
+            java.security.PrivateKey privKey = keyFactory.generatePrivate(keySpec);
+    
+            Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
+            elgamal.init(Cipher.DECRYPT_MODE, privKey);
+            byte[] aesKeyBytes = elgamal.doFinal(encryptedKey);
+    
+            // 7. Decrypt video with AES/GCM
+            SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(aesKeyBytes, "AES");
+            Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+            aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
+    
+            byte[] decryptedVideo = aesCipher.doFinal(ciphertext);
+    
+            // 8. Save decrypted video
+            java.nio.file.Files.write(java.nio.file.Paths.get("decrypted_" + filename), decryptedVideo);
+            System.out.println("[INFO] Video saved to: decrypted_" + filename);
+    
+        } else if (response instanceof StatusMessage) {
+            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+        } else {
+            System.out.println("[ERROR] Unexpected response type: " + response.getClass().getName());
         }
-
-        fileOut.close();
+    
         channel.closeChannel();
-        System.out.println("Download finished: " + filename + " (" + totalBytes + " bytes)");
     }
 
     // Create post login panel
     public static void interactiveSession() throws Exception {
-        Scanner scanner = new Scanner(System.in);
-    
         while (true) {
             System.out.println();
             System.out.println("Welcome, " + user + "! What would you like to do?");
@@ -281,7 +303,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
                 search(encryptedPath, videoCategory, videoName, videoAgeRating);
                 
                     break;
-    
+            }
                 case "2":
                     checkAuthentication(); // <<< add this
                     System.out.print("Enter filename to download: ");
@@ -291,6 +313,11 @@ public static void search(String encryptedPath, String videoCategory, String vid
                     } else {
                         System.out.println("[WARN] Filename cannot be empty.");
                     }
+                
+                    clearConsole();
+                    System.out.println("[DEBUG] You entered: _" + searchFilename + "_");
+                
+                    download(searchFilename);
                     break;
     
                 case "3":

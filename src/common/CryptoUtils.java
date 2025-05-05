@@ -3,6 +3,12 @@ package common;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class CryptoUtils {
@@ -33,5 +39,11 @@ public class CryptoUtils {
 
     public static String encodeBase64(byte[] encoded) {
         return Base64.getEncoder().encodeToString(encoded);
+    }
+
+     public static PublicKey decodeElGamalPublicKey(byte[] encodedKey) throws Exception {
+        KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", new BouncyCastleProvider());
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encodedKey);
+        return keyFactory.generatePublic(keySpec);
     }
 }

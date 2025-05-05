@@ -86,4 +86,36 @@ public class videodatabase {
         VideoDBWrapper wrapper = new VideoDBWrapper(videoList);
         JsonIO.writeFormattedObject(wrapper, new File(DATABASE_FILE));
     }
+
+
+    /**
+     * Retrieves the encrypted file path for a given video name.
+     * @param videoName the name of the video (not the full path)
+     * @return File object pointing to the encrypted video, or null if not found
+     */
+    public static File getVideoFile(String videoName) {
+        try {
+            List<Video> videoList = loadDatabase();
+            for (Video v : videoList) {
+                if (v.getVideoName().equalsIgnoreCase(videoName)) {
+                    Path path = v.getEncryptedPath(); // or v.getPath() depending on your Video.java
+                    return path.toFile();
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("[videodatabase] Failed to load database: " + e.getMessage());
+        }
+        System.err.println("[videodatabase] Video not found: " + videoName);
+        return null;
+    }
+
+
+    public static List<Video> getAllVideos() {
+        try {
+            return loadDatabase(); // This already exists as a private helper
+        } catch (IOException e) {
+            System.err.println("[videodatabase] Error reading video database: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
 }
