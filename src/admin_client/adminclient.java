@@ -140,6 +140,8 @@ public class adminclient {
     // send video after authentication
    // send video after authentication
 private static void sendVideoFile() throws Exception {
+    channel.addMessageType(new StatusMessage());
+
     File file = new File(videofile);
     if (!file.exists()) {
         System.out.println("[ERROR] Video file not found: " + videofile);
@@ -173,21 +175,21 @@ private static void sendVideoFile() throws Exception {
     channel.sendMessage(request);
 
     System.out.println("[INFO] Video upload request sent: " + videofile);
-// Wait for server acknowledgment
-Message resp = channel.receiveMessage();
+    // Wait for server acknowledgment
+    Message resp = channel.receiveMessage();
 
-// Check if the response is of type StatusMessage (success or failure)
-if (resp instanceof StatusMessage) {
-    StatusMessage statusMessage = (StatusMessage) resp;
-    
-    // If status is true, the operation was successful
-    if (statusMessage.getStatus()) {
-        System.out.println("[INFO] Video upload successful.");
+    // Check if the response is of type StatusMessage (success or failure)
+    if (resp instanceof StatusMessage) {
+        StatusMessage statusMessage = (StatusMessage) resp;
+        
+        // If status is true, the operation was successful
+        if (statusMessage.getStatus()) {
+            System.out.println("[INFO] Video upload successful.");
+        } else {
+            System.out.println("[ERROR] Video upload failed.");
+        }
     } else {
-        System.out.println("[ERROR] Video upload failed.");
+        System.out.println("[ERROR] Unexpected response type: " + resp.getClass().getName());
     }
-} else {
-    System.out.println("[ERROR] Unexpected response type: " + resp.getClass().getName());
-}
-}
+    }
 }
