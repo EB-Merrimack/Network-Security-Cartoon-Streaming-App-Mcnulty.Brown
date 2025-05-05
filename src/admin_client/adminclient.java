@@ -157,18 +157,21 @@ private static void sendVideoFile() throws Exception {
         if (videoname.equals("1") || videoname.isEmpty()) {
             videoname = null;
         }
+        clearConsole();
 
         System.out.print("Enter video category (or '1' to set it to null): ");
         String category = reader.readLine().trim();
         if (category.equals("1") || category.isEmpty()) {
             category = null;
         }
+        clearConsole();
 
         System.out.print("Enter video age rating (or '1' to set it to null): ");
         String agerating = reader.readLine().trim();
         if (agerating.equals("1") || agerating.isEmpty()) {
             agerating = null;
         }
+        clearConsole();
 
         // Send AdminInsertVideoRequest with the collected information
         AdminInsertVideoRequest request = new AdminInsertVideoRequest(user, videofile, videoname, category, agerating);
@@ -192,4 +195,18 @@ private static void sendVideoFile() throws Exception {
             System.out.println("[ERROR] Unexpected response type: " + resp.getClass().getName());
         }
     }
+
+private static void clearConsole() {
+    try {
+        // Works on Unix/Linux/macOS
+        if (System.getProperty("os.name").contains("Windows")) {
+            new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+        } else {
+            System.out.print("\033[H\033[2J");
+            System.out.flush();
+        }
+    } catch (Exception e) {
+        System.out.println("[Warning] Could not clear console.");
+    }
+}
 }

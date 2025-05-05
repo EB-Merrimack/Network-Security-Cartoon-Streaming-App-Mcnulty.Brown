@@ -42,15 +42,19 @@ public class Client {
     private static String searchQuery;
     private static String downloadFilename;
     private static final Objects mapper = new Objects();
+
     private static final Scanner scanner = new Scanner(System.in);
+
+    private static long lastAuthTime = 0;
+private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
 
 
     // Print usage/help
     public static void usage() {
         System.out.println("usage:");
         System.out.println("  client --create --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --search <query> --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --download <filename> --user <user> --host <host> --port <portnum>");
+        System.out.println("  client --login --user <user> --host <host> --port <portnum>");
         System.out.println("options:");
         System.out.println("  -c, --create     Create a new account.");
         System.out.println("  -u, --user       Username.");
@@ -106,66 +110,87 @@ public class Client {
         if (console == null) {
             throw new IllegalStateException("Console is not available. Please run in a real terminal.");
         }
-
+    
         char[] passwordChars = console.readPassword("Enter password: ");
         String password = new String(passwordChars);
-
+    
         String otp = console.readLine("Enter OTP: ");
-
+    
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
-
+    
         channel = new ProtocolChannel(socket);
         channel.addMessageType(new StatusMessage());
         channel.addMessageType(new AuthenticateMessage());
-
+    
         AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
         channel.sendMessage(authMsg);
-
+    
         Message response = channel.receiveMessage();
         if (!(response instanceof StatusMessage)) {
             System.out.println("[ERROR] Unexpected response: " + response.getClass().getName());
             return false;
         }
-
+    
         StatusMessage status = (StatusMessage) response;
+        if (status.getStatus()) {
+            lastAuthTime = System.currentTimeMillis(); // <<< SET after successful login
+        }
         return status.getStatus();
     }
-
-    // Search available videos
-    public static void search(String query) throws Exception {
-        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-        socket.startHandshake();
-
-        ProtocolChannel channel = new ProtocolChannel(socket);
-        channel.addMessageType(new SearchRequestMessage());
-        channel.addMessageType(new SearchResponseMessage());
-        channel.addMessageType(new StatusMessage());
-
-        SearchRequestMessage searchMsg = new SearchRequestMessage(query);
-        channel.sendMessage(searchMsg);
-
-        Message response = channel.receiveMessage();
-        if (response instanceof SearchResponseMessage) {
-            List<String> files = ((SearchResponseMessage) response).getFiles();
-            if (files.isEmpty()) {
-                System.out.println("No matching content found.");
-            } else {
-                System.out.println("Search results:");
-                for (String file : files) {
-                    System.out.println(" - " + file);
-                }
+    private static void checkAuthentication() throws Exception {
+        if (System.currentTimeMillis() - lastAuthTime > AUTH_TIMEOUT_MS) {
+            System.out.println("[INFO] Session expired. Re-authentication required.");
+            if (!authenticateUser()) {
+                System.out.println("[ERROR] Re-authentication failed. Exiting.");
+                System.exit(1);
             }
-        } else if (response instanceof StatusMessage) {
-            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
-        } else {
-            System.out.println("[ERROR] Unexpected response: " + response);
         }
-
-        channel.closeChannel();
     }
+    
+    
+   // Search available videos
+public static void search(String encryptedPath, String videoCategory, String videoName, String videoAgeRating) throws Exception {
+    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+    socket.startHandshake();
+
+    ProtocolChannel channel = new ProtocolChannel(socket);
+    channel.addMessageType(new SearchRequestMessage());
+    channel.addMessageType(new SearchResponseMessage());
+    channel.addMessageType(new StatusMessage());
+
+    SearchRequestMessage searchMsg = new SearchRequestMessage();
+    
+    // You need to set the fields into searchMsg (assuming your SearchRequestMessage supports it)
+    searchMsg.setEncryptedPath(encryptedPath);
+    searchMsg.setVideoCategory(videoCategory);
+    searchMsg.setVideoName(videoName);
+    searchMsg.setVideoAgeRating(videoAgeRating);
+
+    channel.sendMessage(searchMsg);
+
+    Message response = channel.receiveMessage();
+    if (response instanceof SearchResponseMessage) {
+        List<String> files = ((SearchResponseMessage) response).getFiles();
+        if (files.isEmpty()) {
+            System.out.println("No matching content found.");
+        } else {
+            System.out.println("Search results:");
+            for (String file : files) {
+                System.out.println(" - " + file);
+            }
+        }
+    } else if (response instanceof StatusMessage) {
+        System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+    } else {
+        System.out.println("[ERROR] Unexpected response: " + response);
+    }
+
+    channel.closeChannel();
+}
+
 
     // Download file
     public static void download(String filename) throws Exception {
@@ -247,25 +272,46 @@ public class Client {
     
             switch (choice) {
                 case "1":
-                    System.out.print("Enter search query: ");
-                    String query = scanner.nextLine().trim();
-                    if (!query.isEmpty()) {
-                        search(query);
-                    } else {
-                        System.out.println("[WARN] Search query cannot be empty.");
-                    }
+                checkAuthentication(); // <<< check if session timed out
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
+                
+                // Ask for Encrypted Path
+                clearConsole();
+                System.out.print("Encrypted Path: ");
+                String encryptedPath = scanner.nextLine().trim();
+                if (encryptedPath.isEmpty()) encryptedPath = "null";
+                
+                // Ask for Video Category
+                clearConsole();
+                System.out.print("Video Category: ");
+                String videoCategory = scanner.nextLine().trim();
+                if (videoCategory.isEmpty()) videoCategory = "null";
+                
+                // Ask for Video Name
+                clearConsole();
+                System.out.print("Video Name: ");
+                String videoName = scanner.nextLine().trim();
+                if (videoName.isEmpty()) videoName = "null";
+                
+                // Ask for Video Age Rating
+                clearConsole();
+                System.out.print("Video Age Rating: ");
+                String videoAgeRating = scanner.nextLine().trim();
+                if (videoAgeRating.isEmpty()) videoAgeRating = "null";
+                
+                // After collecting all inputs, you can now perform the search
+                search(encryptedPath, videoCategory, videoName, videoAgeRating);
+                
                     break;
-    
-                    case "2":
-                    
-                    
-                    String searchFilename = "";
-                    while (searchFilename.isEmpty()) {
-                        System.out.print("Enter filename to download: ");
-                        searchFilename = scanner.nextLine().trim();
-                        if (searchFilename.isEmpty()) {
-                            System.out.println("[WARN] Filename cannot be empty. Try again.");
-                        }
+            }
+                case "2":
+                    checkAuthentication(); // <<< add this
+                    System.out.print("Enter filename to download: ");
+                    String filename = scanner.nextLine().trim();
+                    if (!filename.isEmpty()) {
+                        download(filename);
+                    } else {
+                        System.out.println("[WARN] Filename cannot be empty.");
                     }
                 
                     clearConsole();
@@ -285,7 +331,7 @@ public class Client {
             }
         }
     }
-
+    
     // Main entry point
     public static void main(String[] args) throws Exception {
         // Setup TLS and Bouncy Castle
