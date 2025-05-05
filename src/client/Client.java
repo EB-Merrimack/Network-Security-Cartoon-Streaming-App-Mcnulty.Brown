@@ -303,19 +303,16 @@ public static void search(String encryptedPath, String videoCategory, String vid
                 search(encryptedPath, videoCategory, videoName, videoAgeRating);
                 
                     break;
-            }
                 case "2":
                     checkAuthentication(); // <<< add this
+                    Scanner downloadscanner=new Scanner(System.in);
                     System.out.print("Enter filename to download: ");
-                    String filename = scanner.nextLine().trim();
-                    if (!filename.isEmpty()) {
-                        download(filename);
+                    String searchFilename = downloadscanner.nextLine().trim();
+                    if (!searchFilename.isEmpty()) {
+                        download(searchFilename);
                     } else {
                         System.out.println("[WARN] Filename cannot be empty.");
                     }
-                
-                    clearConsole();
-                    System.out.println("[DEBUG] You entered: _" + searchFilename + "_");
                 
                     download(searchFilename);
                     break;
