@@ -1,7 +1,9 @@
 package admin_client;
 
+import java.io.BufferedReader;
 import java.io.Console;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.Scanner;
 import javax.net.ssl.SSLSocket;
@@ -140,54 +142,54 @@ public class adminclient {
     // send video after authentication
    // send video after authentication
 private static void sendVideoFile() throws Exception {
-    File file = new File(videofile);
-    if (!file.exists()) {
-        System.out.println("[ERROR] Video file not found: " + videofile);
-        System.exit(1);
+
+        File file = new File(videofile);
+        if (!file.exists()) {
+            System.out.println("[ERROR] Video file not found: " + videofile);
+            System.exit(1);
+        }
+
+        // Use BufferedReader for cleaner input handling
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.print("Enter video name (or '1' to set it to null): ");
+        String videoname = reader.readLine().trim();
+        if (videoname.equals("1") || videoname.isEmpty()) {
+            videoname = null;
+        }
+
+        System.out.print("Enter video category (or '1' to set it to null): ");
+        String category = reader.readLine().trim();
+        if (category.equals("1") || category.isEmpty()) {
+            category = null;
+        }
+
+        System.out.print("Enter video age rating (or '1' to set it to null): ");
+        String agerating = reader.readLine().trim();
+        if (agerating.equals("1") || agerating.isEmpty()) {
+            agerating = null;
+        }
+
+        // Send AdminInsertVideoRequest with the collected information
+        AdminInsertVideoRequest request = new AdminInsertVideoRequest(user, videofile, videoname, category, agerating);
+        channel.sendMessage(request);
+
+        System.out.println("[INFO] Video upload request sent: " + videofile);
+
+        // Wait for server acknowledgment
+        Message resp = channel.receiveMessage();
+        System.out.println("[DEBUG] Received response: " + (resp != null ? resp.getType() : "null"));
+
+
+        if (resp instanceof StatusMessage) {
+            StatusMessage statusMessage = (StatusMessage) resp;
+            if (statusMessage.getStatus()) {
+                System.out.println("[INFO] Video upload successful.");
+            } else {
+                System.out.println("[ERROR] Video upload failed.");
+            }
+        } else {
+            System.out.println("[ERROR] Unexpected response type: " + resp.getClass().getName());
+        }
     }
-
-    // Request video name from the user
-    Scanner scanner = new Scanner(System.in);
-    System.out.print("Enter video name (or '1' to set it to null): ");
-    String videoname = scanner.nextLine();
-    if (videoname.equals("1")) {
-        videoname = null;
-    }
-
-    // Request video category from the user
-    System.out.print("Enter video category (or '1' to set it to null): ");
-    String category = scanner.nextLine();
-    if (category.equals("1")) {
-        category = null;
-    }
-
-    // Request video age rating from the user
-    System.out.print("Enter video age rating (or '1' to set it to null): ");
-    String agerating = scanner.nextLine();
-    if (agerating.equals("1")) {
-        agerating = null;
-    }
-
-    // Send AdminInsertVideoRequest with the collected information
-    AdminInsertVideoRequest request = new AdminInsertVideoRequest(user, videofile, videoname, category, agerating);
-    channel.sendMessage(request);
-
-    System.out.println("[INFO] Video upload request sent: " + videofile);
-// Wait for server acknowledgment
-Message resp = channel.receiveMessage();
-
-// Check if the response is of type StatusMessage (success or failure)
-if (resp instanceof StatusMessage) {
-    StatusMessage statusMessage = (StatusMessage) resp;
-    
-    // If status is true, the operation was successful
-    if (statusMessage.getStatus()) {
-        System.out.println("[INFO] Video upload successful.");
-    } else {
-        System.out.println("[ERROR] Video upload failed.");
-    }
-} else {
-    System.out.println("[ERROR] Unexpected response type: " + resp.getClass().getName());
-}
-}
 }

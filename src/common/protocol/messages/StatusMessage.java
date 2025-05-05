@@ -8,17 +8,16 @@ import common.protocol.Message;
 
 public class StatusMessage implements Message {
     private boolean status;
-    private static String payload;
+    private String payload;
 
     public StatusMessage() {}
-    @SuppressWarnings("static-access")
     public StatusMessage(boolean status, String payload) {
         this.status = status;
         this.payload = payload;
     }
 
     public boolean getStatus() { return status; }
-    public static String getPayload() { return payload; }
+    public String getPayload() { return payload; }
 
     /**
      * Deserialize a JSON object into a StatusMessage instance.
@@ -27,7 +26,6 @@ public class StatusMessage implements Message {
      * @throws InvalidObjectException if the object is not a JSONObject or if
      *                                "status" or "payload" fields are missing.
      */
-    @SuppressWarnings("static-access")
     @Override
     public void deserialize(JSONType obj) throws InvalidObjectException {
         if (!(obj instanceof JSONObject)) throw new InvalidObjectException("Expected JSONObject");
