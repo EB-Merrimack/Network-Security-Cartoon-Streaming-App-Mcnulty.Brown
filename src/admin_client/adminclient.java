@@ -179,6 +179,8 @@ private static void sendVideoFile() throws Exception {
 
         // Wait for server acknowledgment
         Message resp = channel.receiveMessage();
+        System.out.println("[DEBUG] Received response: " + (resp != null ? resp.getType() : "null"));
+
 
         if (resp instanceof StatusMessage) {
             StatusMessage statusMessage = (StatusMessage) resp;
