@@ -11,6 +11,18 @@
          "videoCategory" : "dis",
          "videoName" : "mickey",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "test",
+         "videoAgeRating" : "3"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "test",
+         "videoAgeRating" : "pg"
       }
    ]
 }
