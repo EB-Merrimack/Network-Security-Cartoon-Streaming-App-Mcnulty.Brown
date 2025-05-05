@@ -142,7 +142,6 @@ public class adminclient {
     // send video after authentication
    // send video after authentication
 private static void sendVideoFile() throws Exception {
-        channel.addMessageType(new StatusMessage());
 
         File file = new File(videofile);
         if (!file.exists()) {
