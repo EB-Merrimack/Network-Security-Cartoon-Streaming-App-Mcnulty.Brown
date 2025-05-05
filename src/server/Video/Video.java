@@ -69,7 +69,7 @@ public class Video implements JSONSerializable {
     @Override
     public JSONType toJSONType() {
         JSONObject json = new JSONObject();
-        json.put("encryptedPath", encryptedPath.toString());
+        json.put("encryptedPath", encryptedPath.toString().replace("\\", "/"));
         json.put("videoName", videoName);
         json.put("videoCategory", videoCategory);
         json.put("videoAgeRating", videoAgeRating);
