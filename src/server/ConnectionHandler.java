@@ -138,35 +138,39 @@ public class ConnectionHandler implements Runnable {
             
        
 
-        private void handleAdminInsertVideoRequest(Message msg) throws Exception {
-        
-        if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
-            System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
-            System.exit(1); // Exit immediately with error code 1 (nonzero means failure)
-        }
-       
-        
-        AdminInsertVideoRequest adminInsertVideoRequest = (AdminInsertVideoRequest) msg;
-        
-        String videoPath = adminInsertVideoRequest.getVideofile();
-        String videoName = adminInsertVideoRequest.getVideoname();
-        String videoCategory = adminInsertVideoRequest.getCategory();
-        String videoAgeRating = adminInsertVideoRequest.getAgerating();
-        
-        System.out.println("[SERVER] Inserting video: " + videoName);
-        // Encrypt the video first
-     Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
-        Path encryptedPath = protector.protectContent(new File(videoPath));  // <-- Save the returned encrypted path
+private void handleAdminInsertVideoRequest(Message msg) throws Exception {
+    if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
+        System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
+        System.exit(1);
+    }
 
-        videodatabase.insertVideo(encryptedPath, videoName, videoCategory, videoAgeRating);
-        
-        System.out.println("[SERVER] Video inserted.");
-       
-        
-        channel.sendMessage(new StatusMessage(true, "Video inserted."));
-       
-        
-     }
+    AdminInsertVideoRequest req = (AdminInsertVideoRequest) msg;
+    String username = req.getUsername(); // this MUST be added to your request object
+
+    System.out.println("[SERVER] Video upload requested by: " + username);
+
+    // Use the admin.json check, not UserDatabase
+    if (!Admin.isAdmin(username)) {
+        System.out.println("[SERVER] User is not an admin: " + username);
+        channel.sendMessage(new StatusMessage(false, "Permission denied: not an admin."));
+        return;
+    }
+
+    String videoPath = req.getVideofile();
+    String videoName = req.getVideoname();
+    String videoCategory = req.getCategory();
+    String videoAgeRating = req.getAgerating();
+
+    System.out.println("[SERVER] Inserting video: " + videoName);
+    
+    Protector protector = new Protector(Admin.getEncryptedAESKey(), Admin.getAesIV());
+    Path encryptedPath = protector.protectContent(new File(videoPath));
+
+    videodatabase.insertVideo(encryptedPath, videoName, videoCategory, videoAgeRating);
+
+    System.out.println("[SERVER] Video inserted.");
+    channel.sendMessage(new StatusMessage(true, "Video inserted."));
+}
 
         /**
          * Handles a CreateMessage sent by the client. Creates a new user account using the

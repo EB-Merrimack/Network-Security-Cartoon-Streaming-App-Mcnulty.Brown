@@ -1,9 +1,12 @@
 package server.Admin;
 
 import merrimackutil.json.JSONSerializable;
+import merrimackutil.json.JsonIO;
 import merrimackutil.json.types.JSONType;
+import merrimackutil.json.types.JSONArray;
 import merrimackutil.json.types.JSONObject;
 
+import java.io.File;
 import java.io.InvalidObjectException;
 
 public class Admin implements JSONSerializable {
@@ -91,5 +94,25 @@ public void put(String key, String value) {
             throw new IllegalArgumentException("Invalid key: " + key);
     }
 }
+
+
+     public static boolean isAdmin(String username) {
+        try {
+            File adminFile = new File(server.Configuration.getAdminFile());
+            JSONObject root = (JSONObject) JsonIO.readObject(adminFile);
+            JSONArray entries = root.getArray("entries");
+
+            for (int i = 0; i < entries.size(); i++) {
+                JSONObject entry = (JSONObject) entries.get(i);
+                String adminUser = entry.getString("user");
+                if (adminUser != null && adminUser.equals(username)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[Admin] Error reading admin.json: " + e.getMessage());
+        }
+        return false;
+    }
 
 }

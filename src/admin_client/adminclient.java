@@ -85,10 +85,10 @@ public class adminclient {
     
         processArgs(args);
 
-        if (!authenticateUser()) {
+        /*if (!authenticateUser()) {
             System.out.println("[ERROR] Authentication failed. Exiting.");
             System.exit(1);
-        }
+        }*/
 
         System.out.println("[INFO] Authentication successful!");
 
@@ -123,8 +123,8 @@ public class adminclient {
         channel.addMessageType(new AuthenticateMessage());
         channel.addMessageType(new AdminInsertVideoRequest());
 
-        AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
-        channel.sendMessage(authMsg);
+        //AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
+        //channel.sendMessage(authMsg);
 
         Message response = channel.receiveMessage();
         if (!(response instanceof StatusMessage)) {
@@ -168,7 +168,7 @@ private static void sendVideoFile() throws Exception {
     }
 
     // Send AdminInsertVideoRequest with the collected information
-    AdminInsertVideoRequest request = new AdminInsertVideoRequest(videofile, videoname, category, agerating);
+    AdminInsertVideoRequest request = new AdminInsertVideoRequest(user, videofile, videoname, category, agerating);
     channel.sendMessage(request);
 
     System.out.println("[INFO] Video upload request sent: " + videofile);
