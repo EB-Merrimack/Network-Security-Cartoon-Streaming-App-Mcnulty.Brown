@@ -79,4 +79,24 @@ public class SearchRequestMessage implements Message {
                ", VideoName=" + videoName +
                ", VideoAgeRating=" + videoAgeRating;
     }
+
+    public void setEncryptedPath(String encryptedPath2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setEncryptedPath'");
+    }
+
+    public void setVideoCategory(String videoCategory2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setVideoCategory'");
+    }
+
+    public void setVideoName(String videoName2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setVideoName'");
+    }
+
+    public void setVideoAgeRating(String videoAgeRating2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setVideoAgeRating'");
+    }
 }

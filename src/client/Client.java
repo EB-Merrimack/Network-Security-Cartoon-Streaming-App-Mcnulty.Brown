@@ -146,39 +146,47 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
     }
     
     
-    // Search available videos
-    public static void search(String query) throws Exception {
-        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-        socket.startHandshake();
+   // Search available videos
+public static void search(String encryptedPath, String videoCategory, String videoName, String videoAgeRating) throws Exception {
+    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+    socket.startHandshake();
 
-        ProtocolChannel channel = new ProtocolChannel(socket);
-        channel.addMessageType(new SearchRequestMessage());
-        channel.addMessageType(new SearchResponseMessage());
-        channel.addMessageType(new StatusMessage());
+    ProtocolChannel channel = new ProtocolChannel(socket);
+    channel.addMessageType(new SearchRequestMessage());
+    channel.addMessageType(new SearchResponseMessage());
+    channel.addMessageType(new StatusMessage());
 
-        SearchRequestMessage searchMsg = new SearchRequestMessage();
-        channel.sendMessage(searchMsg);
+    SearchRequestMessage searchMsg = new SearchRequestMessage();
+    
+    // You need to set the fields into searchMsg (assuming your SearchRequestMessage supports it)
+    searchMsg.setEncryptedPath(encryptedPath);
+    searchMsg.setVideoCategory(videoCategory);
+    searchMsg.setVideoName(videoName);
+    searchMsg.setVideoAgeRating(videoAgeRating);
 
-        Message response = channel.receiveMessage();
-        if (response instanceof SearchResponseMessage) {
-            List<String> files = ((SearchResponseMessage) response).getFiles();
-            if (files.isEmpty()) {
-                System.out.println("No matching content found.");
-            } else {
-                System.out.println("Search results:");
-                for (String file : files) {
-                    System.out.println(" - " + file);
-                }
-            }
-        } else if (response instanceof StatusMessage) {
-            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+    channel.sendMessage(searchMsg);
+
+    Message response = channel.receiveMessage();
+    if (response instanceof SearchResponseMessage) {
+        List<String> files = ((SearchResponseMessage) response).getFiles();
+        if (files.isEmpty()) {
+            System.out.println("No matching content found.");
         } else {
-            System.out.println("[ERROR] Unexpected response: " + response);
+            System.out.println("Search results:");
+            for (String file : files) {
+                System.out.println(" - " + file);
+            }
         }
-
-        channel.closeChannel();
+    } else if (response instanceof StatusMessage) {
+        System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+    } else {
+        System.out.println("[ERROR] Unexpected response: " + response);
     }
+
+    channel.closeChannel();
+}
+
 
     // Download file
     public static void download(String filename) throws Exception {
@@ -242,26 +250,36 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
     
             switch (choice) {
                 case "1":
-                    checkAuthentication(); // <<< add this
-                    System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
-                    System.out.print("Encrypted Path: ");
-                    String encryptedPath = scanner.nextLine().trim();
-                    if (encryptedPath.isEmpty()) encryptedPath = "null";
-    
-                    System.out.print("Video Category: ");
-                    String videoCategory = scanner.nextLine().trim();
-                    if (videoCategory.isEmpty()) videoCategory = "null";
-    
-                    System.out.print("Video Name: ");
-                    String videoName = scanner.nextLine().trim();
-                    if (videoName.isEmpty()) videoName = "null";
-    
-                    System.out.print("Video Age Rating: ");
-                    String videoAgeRating = scanner.nextLine().trim();
-                    if (videoAgeRating.isEmpty()) videoAgeRating = "null";
-    
-                    // Reconnect and send search
-                    search(encryptedPath);
+                checkAuthentication(); // <<< check if session timed out
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
+                
+                // Ask for Encrypted Path
+                clearConsole();
+                System.out.print("Encrypted Path: ");
+                String encryptedPath = scanner.nextLine().trim();
+                if (encryptedPath.isEmpty()) encryptedPath = "null";
+                
+                // Ask for Video Category
+                clearConsole();
+                System.out.print("Video Category: ");
+                String videoCategory = scanner.nextLine().trim();
+                if (videoCategory.isEmpty()) videoCategory = "null";
+                
+                // Ask for Video Name
+                clearConsole();
+                System.out.print("Video Name: ");
+                String videoName = scanner.nextLine().trim();
+                if (videoName.isEmpty()) videoName = "null";
+                
+                // Ask for Video Age Rating
+                clearConsole();
+                System.out.print("Video Age Rating: ");
+                String videoAgeRating = scanner.nextLine().trim();
+                if (videoAgeRating.isEmpty()) videoAgeRating = "null";
+                
+                // After collecting all inputs, you can now perform the search
+                search(encryptedPath, videoCategory, videoName, videoAgeRating);
+                
                     break;
     
                 case "2":
@@ -387,4 +405,17 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
             }
         }
     }
+    public static void clearConsole() {
+        try {
+            if (System.getProperty("os.name").contains("Windows")) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                System.out.print("\033[H\033[2J");
+                System.out.flush();
+            }
+        } catch (Exception e) {
+            System.out.println("Could not clear console.");
+        }
+    }
+    
 }
