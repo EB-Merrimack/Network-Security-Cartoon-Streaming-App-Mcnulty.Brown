@@ -4,7 +4,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.security.SecureRandom;
 import java.util.Base64;
-
+/*used to generate keys for the root users static creation */
 public class AESKeyGen {
     public static void main(String[] args) throws Exception {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
