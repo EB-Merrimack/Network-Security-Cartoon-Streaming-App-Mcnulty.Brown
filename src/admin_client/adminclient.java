@@ -123,8 +123,8 @@ public class adminclient {
         channel.addMessageType(new AuthenticateMessage());
         channel.addMessageType(new AdminInsertVideoRequest());
 
-        //AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
-        //channel.sendMessage(authMsg);
+        AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
+        channel.sendMessage(authMsg);
 
         Message response = channel.receiveMessage();
         if (!(response instanceof StatusMessage)) {

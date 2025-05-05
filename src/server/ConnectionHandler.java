@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import server.Configuration;
 import server.Admin.Admin;
+import server.Admin.AdminAuthenticationHandler;
 import server.Admin.AdminVerifier;
 import server.Video.videodatabase;
 import common.Video_Security.encryption.Protector;
@@ -16,9 +17,9 @@ import common.protocol.Message;
 import common.protocol.user_creation.CreateAccount;
 import common.protocol.user_creation.UserCreationRequest;
 import common.protocol.ProtocolChannel;
+import common.protocol.messages.AdminAuth;
 import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
-import common.protocol.messages.PubKeyRequest;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.UserDatabase;
@@ -51,7 +52,8 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
         this.channel.addMessageType(new common.protocol.messages.AdminInsertVideoRequest());
         this.channel.addMessageType(new AuthenticateMessage());
-        this.channel.addMessageType(new PubKeyRequest());
+        this.channel.addMessageType(new AdminAuth());
+       
   
       
         this.doDebug = doDebug;
@@ -105,19 +107,17 @@ public class ConnectionHandler implements Runnable {
                 channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
             }
             return;
-        } else if (msg.getType().equals("PubKeyRequest")) {
-            System.out.println("[SERVER] Received PubKeyRequest.");
-        
-            PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
-            String username = pubKeyRequest.getUser();  // Use getUser() here
-            System.out.println("[SERVER] Public key requested for user: " + username);
-        
-            String base64Key = UserDatabase.getEncodedPublicKey(username) ;  // You might want to change this to take a username
-            System.out.println("[SERVER] Sending public key (Base64): " + base64Key);
-        
-            channel.sendMessage((Message) new StatusMessage(true, base64Key));
-            System.out.println("[SERVER] Public key sent.");
+        }
+        else if (msg.getType().equals("AdminAuth")) {
+            System.out.println("[SERVER] Received AdminAuth.");
+            boolean success = AdminAuthenticationHandler.authenticate((AuthenticateMessage) msg);
 
+            if (success) {
+                channel.sendMessage(new StatusMessage(true, "Authentication successful."));
+            } else {
+                channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
+            }
+            return;
         }
         else if (msg.getType().equals("AdminInsertVideoRequest")) {
             System.out.println("[SERVER] Received AdminInsertVideoRequest.");
