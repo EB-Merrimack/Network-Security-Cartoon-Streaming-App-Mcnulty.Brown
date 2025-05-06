@@ -338,7 +338,16 @@ public class ConnectionHandler implements Runnable {
         DataOutputStream out = new DataOutputStream(channel.getOutputStream());
 
         out.writeUTF("DOWNLOAD_RESPONSE"); // a label so client knows what to expect
-        out.writeUTF(Base64.getEncoder().encodeToString(reEncrypted));
+        out.writeInt(reEncrypted.length);
+
+        // Stream the video in binary chunks
+        int chunkSize = 4096;
+        int offset = 0;
+        while (offset < reEncrypted.length) {
+            int len = Math.min(chunkSize, reEncrypted.length - offset);
+            out.write(reEncrypted, offset, len);
+            offset += len;
+        }
         out.writeUTF(Base64.getEncoder().encodeToString(encryptedSessionKey));
         out.writeUTF(Base64.getEncoder().encodeToString(iv));
         out.writeUTF(target.getVideoCategory());
