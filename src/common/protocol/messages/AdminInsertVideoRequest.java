@@ -1,10 +1,9 @@
 package common.protocol.messages;
 
-import merrimackutil.json.JSONSerializable;
 import merrimackutil.json.types.*;
 import common.protocol.Message;
 
-public class AdminInsertVideoRequest implements Message, JSONSerializable {
+public class AdminInsertVideoRequest implements Message {
     private String user;
     private String videofile;
     private String videoname;
