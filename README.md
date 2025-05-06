@@ -17,7 +17,7 @@ This application provides encryption and decryption functionality for video file
 
 ### Root User Initialization
 
-- **The current root user**: The current root user is `eb_yes2025yay5`.
+- **The current root user**: The current root user is `eb_yes2025yay5` with a password of `test`.
   
     - To use this, you will need to initialize the TOTP key:
       ```
