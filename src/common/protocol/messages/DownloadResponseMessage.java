@@ -10,6 +10,8 @@ public class DownloadResponseMessage implements Message {
     private String videoname;
     private String videoagerating;
     private String encryptedVideo;
+    private String encryptedAESKey;
+    private String iv; 
 
     public DownloadResponseMessage() {}
 
@@ -17,12 +19,17 @@ public class DownloadResponseMessage implements Message {
         String encryptedVideo,
         String videocatagory,
         String videoname,
-        String videoagerating
+        String videoagerating,
+        String  encryptedAESKey,
+        String iv
+        
     ) {
         this.encryptedVideo = encryptedVideo;
         this.videocatagory = videocatagory;
         this.videoname = videoname;
         this.videoagerating = videoagerating;
+        this.encryptedAESKey = encryptedAESKey;
+        this.iv = iv;
     }
 
     
@@ -49,6 +56,14 @@ public class DownloadResponseMessage implements Message {
         return "DownloadResponse";
     }
 
+    public String getEncryptedAESKey() {
+        return encryptedAESKey;
+    }
+    
+    public String getIv() {
+        return iv;
+    }
+
     @Override
     public JSONType toJSONType() {
         JSONObject obj = new JSONObject();
@@ -57,6 +72,8 @@ public class DownloadResponseMessage implements Message {
         obj.put("videocatagory", videocatagory);
         obj.put("videoname", videoname);
         obj.put("videoagerating", videoagerating);
+        obj.put("encryptedAESKey", encryptedAESKey);
+        obj.put("iv", iv);
         return obj;
     }
 
@@ -68,6 +85,8 @@ public class DownloadResponseMessage implements Message {
         videocatagory = obj.getString("videocatagory");
         videoname = obj.getString("videoname");
         videoagerating = obj.getString("videoagerating");
+        encryptedAESKey = obj.getString("encryptedAESKey");
+        iv = obj.getString("iv");
     }
 
     @Override

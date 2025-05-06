@@ -237,8 +237,8 @@ public static void search(String encryptedPath, String videoCategory, String vid
     String videoAgeRating = drm.getVideoagerating();
 
     // 5. Decode base64 fields
-    byte[] encryptedKey = Base64.getDecoder().decode(UserDatabase.getAesKey(user));
-    byte[] iv = Base64.getDecoder().decode(UserDatabase.getAesIV(user));
+    byte[] encryptedKey = Base64.getDecoder().decode(drm.getEncryptedAESKey());
+    byte[] iv = Base64.getDecoder().decode(drm.getIv());
     byte[] ciphertext = Base64.getDecoder().decode(encryptedVideoB64);
 
     
@@ -253,7 +253,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
             byte[] aesKeyBytes = elgamal.doFinal(encryptedKey);
     
             // 7. Decrypt video with AES/GCM
-            SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(encryptedKey, "AES");
+            SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(aesKeyBytes, "AES");
             Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
             GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
             aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
