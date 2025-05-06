@@ -275,6 +275,7 @@ public class ConnectionHandler implements Runnable {
                 String requestedFile = msg.getFilename();
                 String user = msg.getUsername();
                 String savePath = msg.getSavePath();
+                System.out.println("[SERVER] Save Path: " + savePath);
         
                 System.out.println("[SERVER] User " + user + " requested file: " + requestedFile);
         
@@ -351,8 +352,17 @@ public class ConnectionHandler implements Runnable {
         
                
                
-        Path outputPath = Path.of(savePath);
-        Files.createDirectories(outputPath.getParent()); // Ensure parent folders exist
+        // Extract file name from the given savePath and change extension to .enc
+        Path originalFilePath = Path.of(savePath);
+        String fileNameWithoutExtension = getFileNameWithoutExtension(originalFilePath);
+        
+        // Create a new path with the .enc extension, keeping the same file name
+        Path outputPath = originalFilePath.getParent().resolve(fileNameWithoutExtension + ".enc").toAbsolutePath();
+        
+        // Ensure the parent directories exist
+        Files.createDirectories(outputPath.getParent());
+        
+        // Write the re-encrypted file to the specified output path
         Files.write(outputPath, reEncrypted);
         System.out.println("[SERVER] Saved re-encrypted video to: " + outputPath.toAbsolutePath());
 
@@ -367,6 +377,16 @@ public class ConnectionHandler implements Runnable {
         try {
             channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
         } catch (Exception ignored) {}
+    }
+}
+// Helper function to get the file name without extension
+private String getFileNameWithoutExtension(Path path) {
+    String fileName = path.getFileName().toString();
+    int extensionIndex = fileName.lastIndexOf('.');
+    if (extensionIndex > 0) {
+        return fileName.substring(0, extensionIndex);
+    } else {
+        return fileName;  // No extension found, return the whole filename
     }
 }
 
