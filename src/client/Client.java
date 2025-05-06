@@ -242,6 +242,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
 
         // Read encrypted AES key length and bytes
         int keyLength = in.readInt();
+        System.out.println("[DEBUG] Received encrypted key length: " + keyLength);
         if (keyLength < 0) {
             throw new IllegalArgumentException("Received negative encrypted key length: " + keyLength);
         }
