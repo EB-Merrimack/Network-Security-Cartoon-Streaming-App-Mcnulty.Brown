@@ -1,10 +1,32 @@
+/* 
+ * Copyright (C) 2025  Emily J Brown And Erin Mcnulty
+ *
+ * This program is a command-line utility designed for administrative tasks on a server. 
+ * It allows administrators to authenticate and upload videos to the server via secure SSL connections. 
+ * The program supports several command-line options for specifying the user, server host, port number, 
+ * and the video file to upload. Additionally, it provides functionality for inserting videos into the server
+ *  by specifying the video details. To use the program, you must pass the appropriate flags to authenticate the user 
+ * and provide the video file you wish to upload.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by 
+ * the Free Software Foundation, either version 3 of the License, or 
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License 
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 package admin_client;
 
 import java.io.BufferedReader;
 import java.io.Console;
 import java.io.File;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
 import java.util.Scanner;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -160,6 +182,7 @@ public class adminclient {
             password = scanner.nextLine();
             System.out.print("Enter OTP: ");
             otp = scanner.nextLine();
+            scanner.close();
         }
 
         // Connect to the server

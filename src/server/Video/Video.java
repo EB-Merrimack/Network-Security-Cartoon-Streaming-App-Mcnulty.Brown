@@ -25,22 +25,48 @@ public class Video implements JSONSerializable {
         this.videoAgeRating = videoAgeRating;
     }
 
+    /**
+     * Gets the path where the encrypted video is stored.
+     *
+     * @return the path of the encrypted video
+     */
     public Path getEncryptedPath() {
         return encryptedPath;
     }
 
+    /**
+     * Retrieves the name of the video.
+     *
+     * @return the video name
+     */
     public String getVideoName() {
         return videoName;
     }
 
+    /**
+     * Retrieves the category of the video.
+     *
+     * @return the category of the video
+     */
     public String getVideoCategory() {
         return videoCategory;
     }
+
+    /**
+     * Retrieves the age rating of the video.
+     *
+     * @return the age rating of the video
+     */
 
     public String getVideoAgeRating() {
         return videoAgeRating;
     }
 
+    /**
+     * Converts the Video object to a string for debugging purposes.
+     *
+     * @return a string representation of the Video
+     */
     @Override
     public String toString() {
         return "Video{" +
