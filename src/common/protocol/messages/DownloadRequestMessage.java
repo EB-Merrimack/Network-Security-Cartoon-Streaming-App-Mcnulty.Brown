@@ -6,13 +6,15 @@ import java.io.InvalidObjectException;
 
 public class DownloadRequestMessage implements Message {
     private String filename;
-    private String username; // NEW FIELD
+    private String username; 
+    private byte[] privKeyBytes;
 
     public DownloadRequestMessage() {}
 
-    public DownloadRequestMessage(String filename, String username) {
+    public DownloadRequestMessage(String filename, String username, byte[] privKeyBytes) {
         this.filename = filename;
         this.username = username;
+        this.privKeyBytes = privKeyBytes;
     }
 
     public String getFilename() {
@@ -21,6 +23,10 @@ public class DownloadRequestMessage implements Message {
 
     public String getUsername() {
         return username;
+    }
+
+    public byte[] getPrivKeyBytes() {
+        return privKeyBytes;
     }
 
     @Override

@@ -60,8 +60,6 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
         System.out.println("  -u, --user       Username.");
         System.out.println("  -h, --host       Server hostname.");
         System.out.println("  -p, --port       Server port number.");
-        System.out.println("  -s, --search     Search for available videos.");
-        System.out.println("  -d, --download   Download a video.");
         System.out.println("  -l, --login      Login to an existing account.");
         System.exit(1);
     }
@@ -194,6 +192,16 @@ public static void search(String encryptedPath, String videoCategory, String vid
 
     // Download file
     public static void download(String filename) throws Exception {
+        checkAuthentication();
+                // 1. Request private key
+            System.out.println("[INFO] Requesting private key...");
+            Console console = System.console();
+            if (console == null) {
+                throw new IllegalStateException("Console not available. Please run in a real terminal.");
+            }
+            String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
+            byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
+        
         System.out.println("[INFO] Downloading video..."+filename);
         // 1. Open SSL socket
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
@@ -208,7 +216,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
     
         // 3. Send request
         System.out.println("[INFO] Sending download request...");
-        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user);
+        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes);
         channel.sendMessage(downloadMsg);
     
         // 4. Receive server response
@@ -231,11 +239,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
     byte[] ciphertext = Base64.getDecoder().decode(encryptedVideoB64);
 
     
-          /*  // 6. Decrypt AES key using private key
-            Console console = System.console();
-            if (console == null) throw new IllegalStateException("Console not available.");
-            String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
-            byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
+       // 6. Decrypt AES key using private key
     
             java.security.spec.PKCS8EncodedKeySpec keySpec = new java.security.spec.PKCS8EncodedKeySpec(privKeyBytes);
             java.security.KeyFactory keyFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
@@ -243,7 +247,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
     
             Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
             elgamal.init(Cipher.DECRYPT_MODE, privKey);
-            byte[] aesKeyBytes = elgamal.doFinal(encryptedKey);*/ 
+            byte[] aesKeyBytes = elgamal.doFinal(encryptedKey);
     
             // 7. Decrypt video with AES/GCM
             SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(encryptedKey, "AES");
@@ -254,7 +258,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
             byte[] decryptedVideo = aesCipher.doFinal(ciphertext);
     
             // 8. Prompt user where to save
-    Console console = System.console();
+   
     if (console == null) throw new IllegalStateException("Console not available.");
     
     String savePath = console.readLine("[INPUT] Enter the full path where you want to save the video (without .mp4): ");

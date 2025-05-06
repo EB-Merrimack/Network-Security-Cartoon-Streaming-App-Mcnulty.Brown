@@ -6,8 +6,12 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -322,15 +326,28 @@ public class ConnectionHandler implements Runnable {
                 byte[] decryptedVideo = Files.readAllBytes(decryptedPath);
                 // STEP 2: Generate session AES key for the user
                String sessionKeyB64 = UserDatabase.getAesKey(user);
-                SecretKey sessionKey = new SecretKeySpec(Base64.getDecoder().decode(sessionKeyB64), "AES");
+                byte[] sessionKey = Base64.getDecoder().decode(sessionKeyB64);
+
 
                String ivB64 = UserDatabase.getAesIV(user);
                byte[] iv = Base64.getDecoder().decode(ivB64);
                 
+                 // 5. Rebuild keys
+             KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", "BC");
 
+    // Load private key
+    PKCS8EncodedKeySpec privSpec = new PKCS8EncodedKeySpec(msg.getPrivKeyBytes());
+    java.security.KeyFactory privFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
+            java.security.PrivateKey privKey = privFactory.generatePrivate(privSpec);
+    // 6. Decrypt AES key using private key
+    System.out.println("[INFO] Decrypting AES key...");
+    Cipher elgamalCipher = Cipher.getInstance("ElGamal", "BC");
+    elgamalCipher.init(Cipher.DECRYPT_MODE, privKey);
+    byte[] aesKeyBytes = elgamalCipher.doFinal(sessionKey);
+    SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
         
                 System.out.println("[DEBUG] Encrypting video with session key...");
-                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
+                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, aesKey, iv);
 
                  // STEP 3: Encrypt AES key with user's ElGamal public key
                 System.out.println("[DEBUG] Retrieving user's public key...");
@@ -345,7 +362,6 @@ public class ConnectionHandler implements Runnable {
                 PublicKey userPubKey = CryptoUtils.decodeElGamalPublicKey(Base64.getDecoder().decode(userPubKeyB64));
                 Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
-                byte[] encryptedSessionKey = elgCipher.doFinal(sessionKey.getEncoded());
          
                 // STEP 4: Send DownloadResponseMessage
                 System.out.println("[DEBUG] Sending DownloadResponseMessage...");
