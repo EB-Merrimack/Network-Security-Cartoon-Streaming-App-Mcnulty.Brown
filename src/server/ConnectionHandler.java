@@ -273,16 +273,14 @@ public class ConnectionHandler implements Runnable {
             try {
                 System.out.println("[SERVER] Handling DownloadRequest.");
                 String requestedFile = msg.getFilename();
-                String user = msg.getUsername(); // Make sure your DownloadRequestMessage includes this field!
-                byte[] privKeyBytes = msg.getPrivKeyBytes();
+                String user = msg.getUsername();
+        
                 System.out.println("[SERVER] User " + user + " requested file: " + requestedFile);
         
-                // Locate encrypted video file by matching name
+                // 1. Locate the video
                 List<Video> allVideos = videodatabase.getAllVideos();
                 Video target = null;
-                System.out.println("[DEBUG] Searching for video in database...");
                 for (Video v : allVideos) {
-                    System.out.println("[DEBUG] Checking video: " + v.getVideoName());
                     if (v.getVideoName().equals(requestedFile)) {
                         target = v;
                         break;
@@ -290,102 +288,74 @@ public class ConnectionHandler implements Runnable {
                 }
         
                 if (target == null) {
-                    System.err.println("[SERVER] Video not found.");
                     channel.sendMessage(new StatusMessage(false, "Video not found."));
                     return;
                 }
         
-                System.out.println("[DEBUG] Video found: " + target.getVideoName());
                 File encFile = target.getEncryptedPath().toFile();
-                System.out.println("[DEBUG] Encrypted file path: " + encFile.getAbsolutePath());
-        
                 if (!encFile.exists()) {
-                    System.err.println("[SERVER] Encrypted file not found: " + encFile.getAbsolutePath());
-                    channel.sendMessage(new StatusMessage(false, "Encrypted video file not found."));
+                    channel.sendMessage(new StatusMessage(false, "Encrypted file not found."));
                     return;
                 }
         
-                // STEP 1: Decrypt using admin AES key and IV
-                System.out.println("[DEBUG] Starting decryption with admin AES key...");
-                System.out.println("[DEBUG] Decryption IV: " + Admin.getAesIV());
-                System.out.println("[DEBUG] Encrypted AES Key: " + Admin.getEncryptedAESKey());
+                // 2. Decrypt using admin AES key and IV
                 Admin.getInstance();
-                System.out.println("[DEBUG] Admin instance loaded successfully.");
-                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(),  encFile, Admin.getAesIV());
+                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), encFile, Admin.getAesIV());
                 Path decryptedPath = unprotector.unprotectContent(encFile);
-                System.out.println("[DEBUG] Decrypted file path: " + decryptedPath);
-
-                // Check if file exists
+        
                 if (!Files.exists(decryptedPath)) {
-                    System.err.println("[SERVER] Decrypted video not found.");
                     channel.sendMessage(new StatusMessage(false, "Failed to decrypt video."));
                     return;
                 }
-
-                // Read the decrypted file
-                System.out.println("[DEBUG] Decrypted file found. Reading bytes...");
-                byte[] decryptedVideo = Files.readAllBytes(decryptedPath);
-                // STEP 2: Generate session AES key for the user
-               String sessionKeyB64 = UserDatabase.getAesKey(user);
-                byte[] sessionKey = Base64.getDecoder().decode(sessionKeyB64);
-
-
-               String ivB64 = UserDatabase.getAesIV(user);
-               byte[] iv = Base64.getDecoder().decode(ivB64);
-               System.out.println("iv and key: "+ivB64+" "+sessionKeyB64);
-                
-                 // 5. Rebuild keys
-             KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", "BC");
-
-   
-    PKCS8EncodedKeySpec privSpec = new PKCS8EncodedKeySpec(privKeyBytes);
-    java.security.KeyFactory privFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
-            java.security.PrivateKey privKey = privFactory.generatePrivate(privSpec);
-    // 6. Decrypt AES key using private key
-    System.out.println("[INFO] Decrypting AES key...");
-    Cipher elgamalCipher = Cipher.getInstance("ElGamal", "BC");
-    elgamalCipher.init(Cipher.DECRYPT_MODE, privKey);
-    byte[] aesKeyBytes = elgamalCipher.doFinal(sessionKey);
-    SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
         
-                System.out.println("[DEBUG] Encrypting video with session key...");
-                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, aesKey, iv);
-
-                 // STEP 3: Encrypt AES key with user's ElGamal public key
-                System.out.println("[DEBUG] Retrieving user's public key...");
+                byte[] decryptedVideo = Files.readAllBytes(decryptedPath);
+        
+                // 3. Generate a fresh AES session key and IV
+                SecureRandom rand = new SecureRandom();
+                byte[] sessionKeyBytes = new byte[16]; // 128-bit AES
+                rand.nextBytes(sessionKeyBytes);
+                SecretKey sessionKey = new SecretKeySpec(sessionKeyBytes, "AES");
+        
+                byte[] iv = new byte[12]; // 96-bit IV for GCM
+                rand.nextBytes(iv);
+        
+                // 4. Encrypt the video with the session AES key
+                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
+        
+                // 5. Encrypt the AES key with the user's ElGamal public key
                 String userPubKeyB64 = UserDatabase.getEncodedPublicKey(user);
                 if (userPubKeyB64 == null) {
-                    System.err.println("[SERVER] No public key found for user.");
                     channel.sendMessage(new StatusMessage(false, "No public key found for user."));
                     return;
                 }
         
-                System.out.println("[DEBUG] Public key found. Encrypting session key with ElGamal...");
-                byte[] keyBytes = Base64.getDecoder().decode(userPubKeyB64);
+                byte[] pubKeyBytes = Base64.getDecoder().decode(userPubKeyB64);
                 KeyFactory factory = KeyFactory.getInstance("ElGamal", "BC");
-                X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(keyBytes);
-                PublicKey userPubKey = factory.generatePublic(pubKeySpec);                Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
+                X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(pubKeyBytes);
+                PublicKey userPubKey = factory.generatePublic(pubKeySpec);
+        
+                Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
-         
-                // STEP 4: Send DownloadResponseMessage
-                System.out.println("[DEBUG] Sending DownloadResponseMessage...");
+                byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
+        
+                // 6. Send the encrypted video, encrypted key, and IV to the client
                 DownloadResponseMessage response = new DownloadResponseMessage(
-                    videodatabase.getVideoCategory(requestedFile),
-                    requestedFile,
-                    videodatabase.getVideoAgeRating(requestedFile),
-                    Base64.getEncoder().encodeToString(reEncrypted)
-                    
-                    
+                    Base64.getEncoder().encodeToString(reEncrypted),
+                    target.getVideoCategory(),
+                    target.getVideoName(),
+                    target.getVideoAgeRating(),
+                    Base64.getEncoder().encodeToString(encryptedSessionKey),
+                    Base64.getEncoder().encodeToString(iv)
                 );
         
+                System.out.println("[SERVER] Sent encrypted video to user.");
                 channel.sendMessage(response);
                 System.out.println("[SERVER] Sent encrypted video to user.");
-        
-                //clean up decrypted file
-                Files.deleteIfExists(decryptedPath); 
+                Files.deleteIfExists(decryptedPath); // cleanup
+                System.out.println("Cleaned up");
         
             } catch (Exception e) {
-                System.err.println("[SERVER ERROR] Failed to process download request: " + e.getMessage());
+                System.err.println("[SERVER ERROR] " + e.getMessage());
                 e.printStackTrace();
                 try {
                     channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));

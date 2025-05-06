@@ -1,3 +1,29 @@
+/* 
+ * Copyright (C) 2025  Emily J Brown And Erin Mcnulty
+ *
+  * The {@code AdminAuth} class represents an authentication message used to verify an admin user
+ * by sending their username, password, and one-time password (OTP). This message is serialized to 
+ * JSON format for transmission and can be deserialized back to an object. It is part of the 
+ * authentication process, ensuring secure communication between the admin client and the server.
+ * 
+ * It includes methods for:
+ * - Getting the username, password, and OTP.
+ * - Serializing and deserializing the message to and from JSON.
+ * - Providing a string representation of the message.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by 
+ * the Free Software Foundation, either version 3 of the License, or 
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License 
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 package common.protocol.messages;
 
 import merrimackutil.json.types.*;

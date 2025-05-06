@@ -43,6 +43,10 @@ public class Configuration implements JSONSerializable
     return this.port;
   }
 
+  /**
+   * Get the path to the admin database file.
+   * @return the file path as a string.
+   */
   public static String getAdminFile() {
     return adminFile;
   }
@@ -93,6 +97,10 @@ public class Configuration implements JSONSerializable
     return keystorePass;
   }
 
+  /**
+   * Sets the configuration directory for this configuration object.
+   * @param path the directory path as a string.
+   */
   public void setConfigDir(String path) 
   {
     this.configDir = path;
@@ -100,23 +108,30 @@ public class Configuration implements JSONSerializable
 
   /**
    * Converts JSON data to an object of this type.
+   * 
+   * This method deserializes a JSONType object into its corresponding fields.
+   * It verifies that the JSON object contains the necessary keys and assigns
+   * the values to the fields of this configuration object.
+   *
    * @param obj a JSON type to deserialize.
-   * @throws InvalidObjectException the type does not match this object.
+   * @throws InvalidObjectException if the type does not match this object or 
+   *                                if required keys are missing.
    */
-  public void deserialize(JSONType obj) throws InvalidObjectException
-  {
-      JSONObject config;
+  public void deserialize(JSONType obj) throws InvalidObjectException {
+      // Define the expected keys for the configuration
       String[] keys = {
           "port", "users-file", "Videofolder",
           "keystore-file", "keystore-pass", "admin-file", "videoDatabase"
       };
-  
-      if (obj.isObject())
-      {
-          config = (JSONObject) obj;
-  
+
+      // Check if the input JSONType is a JSONObject
+      if (obj.isObject()) {
+          JSONObject config = (JSONObject) obj;
+
+          // Verify that the JSON object contains all required keys
           config.checkValidity(keys);
-  
+
+          // Assign JSON values to the configuration fields
           port = config.getInt("port");
           usersFile = config.getString("users-file");
           Videofolder = config.getString("Videofolder");
@@ -124,11 +139,9 @@ public class Configuration implements JSONSerializable
           keystorePass = config.getString("keystore-pass");
           adminFile = config.getString("admin-file");
           videoDatabase = config.getString("videoDatabase");
-      }
-  
-          
-      else
-      {
+
+      } else {
+          // Throw an exception if the JSONType is not a JSONObject
           throw new InvalidObjectException(
               "Configuration -- received array, expected Object."
           );

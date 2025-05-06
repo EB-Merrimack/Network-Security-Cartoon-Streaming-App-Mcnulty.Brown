@@ -23,6 +23,26 @@ public class videodatabase {
             this.videoList = videoList;
         }
 
+        /**
+         * Converts the object to a JSON type.
+         * @return a JSON type either JSONObject or JSONArray.
+         * The returned JSONObject contains the videos field.
+         * The videos field is a JSONArray of Video JSONTypes.
+         *
+         * The JSON object is structured as follows:
+         *
+         * {
+         *     "videos": [
+         *         {
+         *             "encryptedPath": string,
+         *             "videoName": string,
+         *             "videoCategory": string,
+         *             "videoAgeRating": string
+         *         },
+         *         ...
+         *     ]
+         * }
+         */
         @Override
         public JSONType toJSONType() {
             JSONArray videos = new JSONArray();
@@ -34,13 +54,26 @@ public class videodatabase {
             return root;
         }
 
+        /**
+         * Deserialize a JSON object into a VideoDBWrapper instance.
+         * 
+         * @param obj the JSON object to deserialize
+         * @throws InvalidObjectException if the object is not a JSON object
+         */
         @Override
         public void deserialize(JSONType obj) {
             // unused
         }
     }
 
-    // Insert a new video into the database
+    /**
+     * Inserts a new video into the database.
+     * 
+     * @param encryptedPath The Path to the encrypted video file.
+     * @param videoName The name of the video.
+     * @param videoCategory The category of the video.
+     * @param videoAgeRating The age rating of the video.
+     */
     public static void insertVideo(Path encryptedPath, String videoName, String videoCategory, String videoAgeRating) {
         try {
             List<Video> videoList = loadDatabase();
@@ -57,23 +90,33 @@ public class videodatabase {
         }
     }
 
-    // Load video database into a list
+    /**
+     * Load video database into a list.
+     * 
+     * @return a list of Video objects
+     * @throws IOException if there is an error reading the database file
+     */
     private static List<Video> loadDatabase() throws IOException {
         List<Video> videoList = new ArrayList<>();
         File dbFile = new File(DATABASE_FILE);
 
-        if (!dbFile.exists()) return videoList;
+        if (!dbFile.exists()) {
+            return videoList;
+        }
 
         JSONObject root = JsonIO.readObject(dbFile);
         JSONArray videos = root.getArray("videos");
 
+        // Iterate over the JSON array and deserialize each entry
         for (int i = 0; i < videos.size(); i++) {
             JSONType entry = (JSONType) videos.get(i);
             Video v = new Video();
             try {
+                // Attempt to deserialize each entry
                 v.deserialize(entry);
                 videoList.add(v);
             } catch (InvalidObjectException e) {
+                // If deserialization fails, skip this entry and log an error
                 System.err.println("[ERROR] Skipping malformed video entry: " + e.getMessage());
             }
         }
@@ -87,19 +130,30 @@ public class videodatabase {
         JsonIO.writeFormattedObject(wrapper, new File(DATABASE_FILE));
     }
 
-    // Retrieve the encrypted file path for a given video name
+    /**
+     * Retrieve the encrypted file path for a given video name.
+     *
+     * @param videoName The name of the video.
+     * @return The File object representing the encrypted video file, or null if not found.
+     */
     public static File getVideoFile(String videoName) {
         try {
+            // Load the video database into a list
             List<Video> videoList = loadDatabase();
+            
+            // Iterate through the video list to find the matching video name
             for (Video v : videoList) {
                 if (v.getVideoName().equalsIgnoreCase(videoName)) {
+                    // Get the encrypted path and convert it to File
                     Path path = v.getEncryptedPath();
                     return path.toFile();
                 }
             }
         } catch (IOException e) {
+            // Handle any I/O exceptions that occur during database loading
             System.err.println("[videodatabase] Failed to load database: " + e.getMessage());
         }
+        // Print an error message if the video is not found
         System.err.println("[videodatabase] Video not found: " + videoName);
         return null;
     }
