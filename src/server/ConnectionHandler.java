@@ -271,9 +271,10 @@ public class ConnectionHandler implements Runnable {
 
         private void handleDownloadRequest(DownloadRequestMessage msg) {
             try {
+                System.out.println("[SERVER] Handling DownloadRequest.");
                 String requestedFile = msg.getFilename();
                 String user = msg.getUsername(); // Make sure your DownloadRequestMessage includes this field!
-        
+                byte[] privKeyBytes = msg.getPrivKeyBytes();
                 System.out.println("[SERVER] User " + user + " requested file: " + requestedFile);
         
                 // Locate encrypted video file by matching name
@@ -336,9 +337,8 @@ public class ConnectionHandler implements Runnable {
                  // 5. Rebuild keys
              KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", "BC");
 
-    // Load private key
-    System.out.println("[INFO] Loading private key..."+msg.getPrivKeyBytes());
-    PKCS8EncodedKeySpec privSpec = new PKCS8EncodedKeySpec(msg.getPrivKeyBytes());
+   
+    PKCS8EncodedKeySpec privSpec = new PKCS8EncodedKeySpec(privKeyBytes);
     java.security.KeyFactory privFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
             java.security.PrivateKey privKey = privFactory.generatePrivate(privSpec);
     // 6. Decrypt AES key using private key

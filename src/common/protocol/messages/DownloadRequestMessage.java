@@ -3,6 +3,7 @@ package common.protocol.messages;
 import merrimackutil.json.types.*;
 import common.protocol.Message;
 import java.io.InvalidObjectException;
+import java.util.Base64; // <-- you forgot this import
 
 public class DownloadRequestMessage implements Message {
     private String filename;
@@ -26,7 +27,7 @@ public class DownloadRequestMessage implements Message {
     }
 
     public byte[] getPrivKeyBytes() {
-        System.out.println("[INFO] DownloadRequestMessage.getPrivKeyBytes()"+privKeyBytes);
+        System.out.println("[INFO] DownloadRequestMessage.getPrivKeyBytes(): " + java.util.Arrays.toString(privKeyBytes));
         return privKeyBytes;
     }
 
@@ -37,7 +38,8 @@ public class DownloadRequestMessage implements Message {
         }
         JSONObject json = (JSONObject) obj;
         this.filename = json.getString("filename");
-        this.username = json.getString("username"); // NEW
+        this.username = json.getString("username");
+        this.privKeyBytes = Base64.getDecoder().decode(json.getString("privKeyBytes")); // <-- fix here
     }
 
     @Override
@@ -45,7 +47,8 @@ public class DownloadRequestMessage implements Message {
         JSONObject obj = new JSONObject();
         obj.put("type", "DownloadRequest");
         obj.put("filename", filename);
-        obj.put("username", username); // NEW
+        obj.put("username", username);
+        obj.put("privKeyBytes", Base64.getEncoder().encodeToString(privKeyBytes)); // <-- fix here
         return obj;
     }
 
@@ -63,6 +66,6 @@ public class DownloadRequestMessage implements Message {
 
     @Override
     public String toString() {
-        return "[DownloadRequestMessage] filename=" + filename + ", username=" + username;
+        return "[DownloadRequestMessage] filename=" + filename + ", username=" + username + ", privKeyBytes=" + java.util.Arrays.toString(privKeyBytes);
     }
 }
