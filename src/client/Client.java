@@ -224,6 +224,8 @@ public static void search(String encryptedPath, String videoCategory, String vid
     
         // 4. Receive server response
         Message response = channel.receiveMessage();
+        System.out.println("[DEBUG] Received message type: " + (response != null ? response.getType() : "null"));
+        System.out.println("[DEBUG] Received message class: " + (response != null ? response.getClass().getName() : "null"));
     
         if (response instanceof DownloadResponseMessage) {
             DownloadResponseMessage drm = (DownloadResponseMessage) response;
@@ -257,6 +259,9 @@ public static void search(String encryptedPath, String videoCategory, String vid
             Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
             GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
             aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
+
+            System.out.println("[DEBUG] AES key length (bytes): " + aesKeyBytes.length);
+            System.out.println("[DEBUG] AES key (base64): " + Base64.getEncoder().encodeToString(aesKeyBytes));
     
             byte[] decryptedVideo = aesCipher.doFinal(ciphertext);
     
@@ -277,7 +282,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
     savePath += ".mp4"; // Always ensure it ends with .mp4
 
     java.nio.file.Files.write(java.nio.file.Paths.get(savePath), decryptedVideo);
-   // ✅ Now output the user-friendly download message:
+   // Now output the user-friendly download message:
      System.out.println("\n=== Download Complete ===");
      System.out.println("Video Name     : " + videoName);
      System.out.println("Category       : " + videoCategory);
@@ -430,6 +435,9 @@ channel.closeChannel();
             channel.sendMessage(req);
     
             Message response = channel.receiveMessage();
+            if (response == null) {
+                System.err.println("[CLIENT ERROR] No response received (null). Check message type registration.");
+            }
             if (response instanceof StatusMessage) {
                 StatusMessage status = (StatusMessage) response;
     

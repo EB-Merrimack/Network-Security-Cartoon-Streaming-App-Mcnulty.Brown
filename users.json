@@ -1,15 +1,6 @@
 {
    "entries" : [
       {
-         "encryptedAESKey" : "L2zJp2kNV+PCmjQgDb83mtETVFXbvFIPxwcwRSfdHK8sQwAUB4VS0+kZLED1QePeBrled9ChyqELbNqfRlqmFG2I0rZoSt5N5Rsgc/fMbhm/zZoaNZlHgBJI8qfLmlX9lXPo31rXRqZRz1mwVOM7bQMP8SmR0u1vvx4pFuUuiDg=",
-         "salt" : "1M5xPpgE4FNUPRNrVREKzg==",
-         "pass" : "0csUsqQ8+6A56B81o3Uuxg==",
-         "totp-key" : "lPAHLVVq/NntFaKmUDFSe/kbImyWVDqhVlxXdixx4QRLx91zux3lX8u8qVYks8+djPDUt4gfLwv5DwrTEFrc9g==",
-         "aesIV" : "S+swhDRHSQ5UINle",
-         "user" : "erin3",
-         "pubkey" : "MIHYMIGQBgYrDgcCAQEwgYUCQQD8poLOjhLKuibvzPcRDlJtsHiwXt7LzR60ogjzrhYXrgHzW5Gkfm32NBPF4S7QiZvNEyrNUNmRUb3EPuc3WS4XAkBnhHGyepz0TukaScUUfbGpqvJE8FpDTWSGkx0tFCcbnjUDC3H9c9oXkGmzLik1Yw4cIGI1TQ2iCmxBblC+eUykA0MAAkBLYGumNO0nECcDMThtCoHzE97bCviCfOdViyCH8JZ0B0XdULKWvPprf1N+HfFq1KBUVyGfBA5FAS2570y42XeK"
-      },
-      {
          "encryptedAESKey" : "zHuTjIEnCcY1I66WqC0KyiBCpaTBLx+lY0rDw5LOyegOQU0decKO7gPyscDbW3Nd/hBD8HCYVWNH79oUwNyPWvjoidYD7Sb33ZIevthzTu5d0e3oy0eFfazAyKyh8EWh+XWzm6OmqYUP6+CrLcONFgpXqHhbGoJu7BZqIREHQdI=",
          "salt" : "sK9LJ/4d+TDRABGesqz4zQ==",
          "pass" : "0P4zlBmtc4jh80mGSpFhoA==",

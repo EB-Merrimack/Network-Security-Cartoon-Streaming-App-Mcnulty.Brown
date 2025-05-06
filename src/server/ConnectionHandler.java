@@ -348,9 +348,11 @@ public class ConnectionHandler implements Runnable {
                     Base64.getEncoder().encodeToString(iv)
                 );
         
+                System.out.println("[SERVER] Sent encrypted video to user.");
                 channel.sendMessage(response);
                 System.out.println("[SERVER] Sent encrypted video to user.");
                 Files.deleteIfExists(decryptedPath); // cleanup
+                System.out.println("Cleaned up");
         
             } catch (Exception e) {
                 System.err.println("[SERVER ERROR] " + e.getMessage());
