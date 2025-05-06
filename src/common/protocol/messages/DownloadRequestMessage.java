@@ -26,6 +26,7 @@ public class DownloadRequestMessage implements Message {
     }
 
     public byte[] getPrivKeyBytes() {
+        System.out.println("[INFO] DownloadRequestMessage.getPrivKeyBytes()"+privKeyBytes);
         return privKeyBytes;
     }
 

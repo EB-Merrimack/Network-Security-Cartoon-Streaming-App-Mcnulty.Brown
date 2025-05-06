@@ -200,7 +200,9 @@ public static void search(String encryptedPath, String videoCategory, String vid
                 throw new IllegalStateException("Console not available. Please run in a real terminal.");
             }
             String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
+            System.out.println(privKeyBase64);
             byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
+            System.out.println(privKeyBytes);
         
         System.out.println("[INFO] Downloading video..."+filename);
         // 1. Open SSL socket
@@ -217,6 +219,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
         // 3. Send request
         System.out.println("[INFO] Sending download request...");
         DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes);
+        System.out.println(downloadMsg+"including"+filename+"and"+user+"and"+privKeyBytes);
         channel.sendMessage(downloadMsg);
     
         // 4. Receive server response

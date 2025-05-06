@@ -331,11 +331,13 @@ public class ConnectionHandler implements Runnable {
 
                String ivB64 = UserDatabase.getAesIV(user);
                byte[] iv = Base64.getDecoder().decode(ivB64);
+               System.out.println("iv and key: "+ivB64+" "+sessionKeyB64);
                 
                  // 5. Rebuild keys
              KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", "BC");
 
     // Load private key
+    System.out.println("[INFO] Loading private key..."+msg.getPrivKeyBytes());
     PKCS8EncodedKeySpec privSpec = new PKCS8EncodedKeySpec(msg.getPrivKeyBytes());
     java.security.KeyFactory privFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
             java.security.PrivateKey privKey = privFactory.generatePrivate(privSpec);
