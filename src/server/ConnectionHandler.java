@@ -310,16 +310,19 @@ public class ConnectionHandler implements Runnable {
         
                 byte[] decryptedVideo = Files.readAllBytes(decryptedPath);
         
-                // 3. Get user's session AES key and IV from the user database
-                byte[] sessionKey = Base64.getDecoder().decode(UserDatabase.getAesKey(user));
-                byte[] iv = Base64.getDecoder().decode(UserDatabase.getAesIV(user));
+                // 3. Generate a fresh AES session key and IV
+                SecureRandom rand = new SecureRandom();
+                byte[] sessionKeyBytes = new byte[16]; // 128-bit AES
+                rand.nextBytes(sessionKeyBytes);
+                SecretKey sessionKey = new SecretKeySpec(sessionKeyBytes, "AES");
         
-                SecretKey aesKey = new SecretKeySpec(sessionKey, "AES");
+                byte[] iv = new byte[12]; // 96-bit IV for GCM
+                rand.nextBytes(iv);
         
                 // 4. Encrypt the video with the session AES key
-                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, aesKey, iv);
+                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
         
-                // 5. Encrypt AES session key with user's public ElGamal key
+                // 5. Encrypt the AES key with the user's ElGamal public key
                 String userPubKeyB64 = UserDatabase.getEncodedPublicKey(user);
                 if (userPubKeyB64 == null) {
                     channel.sendMessage(new StatusMessage(false, "No public key found for user."));
@@ -333,16 +336,16 @@ public class ConnectionHandler implements Runnable {
         
                 Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
-                byte[] encryptedSessionKey = elgCipher.doFinal(sessionKey); // <== this is what was missing!
+                byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
         
-                // 6. Send back the encrypted video and key
+                // 6. Send the encrypted video, encrypted key, and IV to the client
                 DownloadResponseMessage response = new DownloadResponseMessage(
-                    Base64.getEncoder().encodeToString(reEncrypted),                    // Encrypted video
-                    target.getVideoCategory(),                                         // Category
-                    target.getVideoName(),                                             // Name
-                    target.getVideoAgeRating(),                                        // Age rating
-                    Base64.getEncoder().encodeToString(encryptedSessionKey),           // Encrypted AES key
-                    Base64.getEncoder().encodeToString(iv)                             // IV
+                    Base64.getEncoder().encodeToString(reEncrypted),
+                    target.getVideoCategory(),
+                    target.getVideoName(),
+                    target.getVideoAgeRating(),
+                    Base64.getEncoder().encodeToString(encryptedSessionKey),
+                    Base64.getEncoder().encodeToString(iv)
                 );
         
                 channel.sendMessage(response);
