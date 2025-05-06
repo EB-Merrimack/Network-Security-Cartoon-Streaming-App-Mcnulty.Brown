@@ -274,6 +274,7 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[SERVER] Handling DownloadRequest.");
                 String requestedFile = msg.getFilename();
                 String user = msg.getUsername();
+                String savePath = msg.getSavePath();
         
                 System.out.println("[SERVER] User " + user + " requested file: " + requestedFile);
         
@@ -340,7 +341,7 @@ public class ConnectionHandler implements Runnable {
         
                 // 6. Send the encrypted video, encrypted key, and IV to the client
                 DownloadResponseMessage response = new DownloadResponseMessage(
-                    Base64.getEncoder().encodeToString(reEncrypted),
+                    savePath,
                     target.getVideoCategory(),
                     target.getVideoName(),
                     target.getVideoAgeRating(),
@@ -348,21 +349,25 @@ public class ConnectionHandler implements Runnable {
                     Base64.getEncoder().encodeToString(iv)
                 );
         
-                System.out.println("[SERVER] Sent encrypted video to user.");
-                channel.sendMessage(response);
-                System.out.println("[SERVER] Sent encrypted video to user.");
-                Files.deleteIfExists(decryptedPath); // cleanup
-                System.out.println("Cleaned up");
-        
-            } catch (Exception e) {
-                System.err.println("[SERVER ERROR] " + e.getMessage());
-                e.printStackTrace();
-                try {
-                    channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
-                } catch (Exception ignored) {}
-            }
-        }
-        
-    
-    
+               
+               
+        Path outputPath = Path.of(savePath);
+        Files.createDirectories(outputPath.getParent()); // Ensure parent folders exist
+        Files.write(outputPath, reEncrypted);
+        System.out.println("[SERVER] Saved re-encrypted video to: " + outputPath.toAbsolutePath());
+
+       // Send response to client with the file save location
+       channel.sendMessage(response);
+        Files.deleteIfExists(decryptedPath); // Cleanup
+        System.out.println("[SERVER] Cleaned up temporary decrypted file.");
+
+    } catch (Exception e) {
+        System.err.println("[SERVER ERROR] " + e.getMessage());
+        e.printStackTrace();
+        try {
+            channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
+        } catch (Exception ignored) {}
+    }
+}
+
 }
