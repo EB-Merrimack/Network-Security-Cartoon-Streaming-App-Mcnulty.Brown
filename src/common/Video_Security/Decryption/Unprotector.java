@@ -15,7 +15,7 @@ public class Unprotector {
     private final SecretKey aesKey;
     private final byte[] aesIV;      // IV ready to use
 
-    public Unprotector(String base64AESKey, String base64IV) {
+    public Unprotector(String base64AESKey, String base64IV, File encryptedFile) throws Exception {
         System.out.println("[DEBUG] Starting Unprotector with base64AESKey: " + base64AESKey + ", base64IV: " + base64IV);
         System.out.println("[DEBUG] Initializing Unprotector...");
         byte[] aesKeyBytes = Base64.getDecoder().decode(base64AESKey);
@@ -24,6 +24,8 @@ public class Unprotector {
 
         this.aesIV = Base64.getDecoder().decode(base64IV);
         System.out.println("[DEBUG] AES IV decoded successfully.");
+
+        unprotectContent(encryptedFile);
     }
 
     public void unprotectContent(File encryptedFile) throws Exception {
@@ -38,7 +40,7 @@ public class Unprotector {
         System.out.println("[DEBUG] Encrypted file read. Size: " + encryptedData.length + " bytes");
 
         System.out.println("[DEBUG] Decrypting content...");
-        byte[] decryptedContent = CryptoUtils.decrypt(encryptedData, aesKey, aesIV);
+        byte[] decryptedContent = CryptoUtils.decrypt(encryptedData, aesKey);
         System.out.println("[DEBUG] Content decrypted successfully. Size: " + decryptedContent.length + " bytes");
 
         // Save the decrypted file

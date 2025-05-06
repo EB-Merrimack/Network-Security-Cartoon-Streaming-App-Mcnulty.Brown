@@ -315,7 +315,6 @@ public static void search(String encryptedPath, String videoCategory, String vid
                         System.out.println("[WARN] Filename cannot be empty.");
                     }
                 
-                    download(searchFilename);
                     break;
     
                 case "3":

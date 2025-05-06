@@ -149,7 +149,7 @@ public class ConnectionHandler implements Runnable {
         } else if (msg.getType().equals("DownloadRequest")) {
             System.out.println("[SERVER] Received DownloadRequest.");
             handleDownloadRequest((DownloadRequestMessage) msg);
-            return;
+            continue; // Continue waiting for the next message
         }
          else {
             System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
@@ -289,8 +289,7 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[DEBUG] Encrypted AES Key: " + Admin.getEncryptedAESKey());
                 Admin.getInstance();
                 System.out.println("[DEBUG] Admin instance loaded successfully.");
-                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), Admin.getAesIV());
-                unprotector.unprotectContent(encFile);
+                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), Admin.getAesIV(), encFile);
         
                 // Get the decrypted file
                 File decryptedFile = new File(encFile.getParentFile(), requestedFile);
@@ -316,7 +315,7 @@ public class ConnectionHandler implements Runnable {
                 rand.nextBytes(iv);
         
                 System.out.println("[DEBUG] Encrypting video with session key...");
-                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
+                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey);
         
                 // STEP 3: Encrypt AES key with user's ElGamal public key
                 System.out.println("[DEBUG] Retrieving user's public key...");

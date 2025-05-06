@@ -4,81 +4,63 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
-import java.security.KeyFactory;
 import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 public class CryptoUtils {
 
-    // GCM settings
     private static final String AES_TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int GCM_TAG_LENGTH_BITS = 128; // Auth tag 128 bits (16 bytes)
+    private static final int GCM_TAG_LENGTH_BITS = 128;
+    private static final int IV_SIZE = 12; // Standard IV size for AES-GCM
 
     /**
-     * Encrypts the fileData using AES-GCM with provided key and IV.
-     * Returns a byte array containing the IV + ciphertext + authentication tag.
+     * Encrypts data using AES-GCM and returns IV + ciphertext.
      */
-    public static byte[] encrypt(byte[] fileData, SecretKey key, byte[] aesIV) throws Exception {
+    public static byte[] encrypt(byte[] data, SecretKey key) throws Exception {
+        byte[] iv = generateIV();
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, aesIV);
+        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
-
-        byte[] encryptedData = cipher.doFinal(fileData);
-        byte[] tag = new byte[16];
-        System.arraycopy(encryptedData, encryptedData.length - 16, tag, 0, 16);
-        byte[] ciphertext = new byte[encryptedData.length - 16];
-        System.arraycopy(encryptedData, 0, ciphertext, 0, ciphertext.length);
-
-        // Debug: Print the tag
-        System.out.println("Encryption Tag (Base64): " + encodeBase64(tag));
-
-        // Combine IV + ciphertext + tag
-        byte[] result = new byte[aesIV.length + ciphertext.length + tag.length];
-        System.arraycopy(aesIV, 0, result, 0, aesIV.length);
-        System.arraycopy(ciphertext, 0, result, aesIV.length, ciphertext.length);
-        System.arraycopy(tag, 0, result, aesIV.length + ciphertext.length, tag.length);
-
+    
+        byte[] encryptedData = cipher.doFinal(data);
+    
+        // Combine IV + encrypted data (which includes the tag)
+        byte[] result = new byte[iv.length + encryptedData.length];
+        System.arraycopy(iv, 0, result, 0, iv.length);
+        System.arraycopy(encryptedData, 0, result, iv.length, encryptedData.length);
+    
         return result;
     }
-
+    
     /**
-     * Decrypts the encryptedData using AES-GCM with provided key and IV.
-     * Verifies the authentication tag.
+     * Decrypts data using AES-GCM and returns the original plaintext.
      */
-    public static byte[] decrypt(byte[] encryptedData, SecretKey key, byte[] aesIV) throws Exception {
-        // Extract the tag and ciphertext from the input data
-        byte[] tag = new byte[16];
-        System.arraycopy(encryptedData, encryptedData.length - 16, tag, 0, 16);
-        byte[] ciphertext = new byte[encryptedData.length - 16];
-        System.arraycopy(encryptedData, 0, ciphertext, 0, ciphertext.length);
-
-        // Debug: Print the extracted tag
-        System.out.println("Extracted Tag (Base64): " + encodeBase64(tag));
-
-        // Decrypt the ciphertext
+    public static byte[] decrypt(byte[] encryptedData, SecretKey key) throws Exception {
+        byte[] iv = new byte[IV_SIZE];
+        System.arraycopy(encryptedData, 0, iv, 0, IV_SIZE);
+    
+        byte[] ciphertext = new byte[encryptedData.length - IV_SIZE];
+        System.arraycopy(encryptedData, IV_SIZE, ciphertext, 0, ciphertext.length);
+    
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, aesIV);
+        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
         cipher.init(Cipher.DECRYPT_MODE, key, spec);
-
-        // Perform decryption and verify the tag automatically
-        byte[] decryptedData = cipher.doFinal(ciphertext);
-
-        // Debug: Optionally print the decrypted data (for verification purposes)
-        System.out.println("Decrypted Data (Base64): " + encodeBase64(decryptedData));
-
-        return decryptedData;
+    
+        return cipher.doFinal(ciphertext);
+    }
+    
+    /**
+     * Generates a random IV.
+     */
+    private static byte[] generateIV() {
+        byte[] iv = new byte[IV_SIZE];
+        new SecureRandom().nextBytes(iv);
+        return iv;
     }
 
-    public static String encodeBase64(byte[] encoded) {
-        return Base64.getEncoder().encodeToString(encoded);
-    }
-
-    public static PublicKey decodeElGamalPublicKey(byte[] encodedKey) throws Exception {
-        KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", new BouncyCastleProvider());
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encodedKey);
-        return keyFactory.generatePublic(keySpec);
+    public static PublicKey decodeElGamalPublicKey(byte[] decode) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'decodeElGamalPublicKey'");
     }
 }

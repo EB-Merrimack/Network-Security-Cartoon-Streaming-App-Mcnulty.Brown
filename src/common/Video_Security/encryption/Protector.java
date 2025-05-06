@@ -37,7 +37,7 @@ public class Protector {
      */
     public Path protectContent(File inputFile) throws Exception {
         byte[] fileData = Files.readAllBytes(inputFile.toPath());
-        byte[] encryptedContent = CryptoUtils.encrypt(fileData, aesKey, aesIV);
+        byte[] encryptedContent = CryptoUtils.encrypt(fileData, aesKey);
 
         // Combine IV + encrypted content
         byte[] outputData = new byte[aesIV.length + encryptedContent.length];

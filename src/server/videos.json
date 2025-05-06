@@ -41,6 +41,18 @@
          "videoCategory" : "dis",
          "videoName" : "allto",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/All Together (1942).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "test",
+         "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "don",
+         "videoAgeRating" : "pg"
       }
    ]
 }
