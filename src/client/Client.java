@@ -23,7 +23,7 @@ import org.bouncycastle.util.Objects;
 import common.protocol.Message;
 import common.protocol.ProtocolChannel;
 import common.protocol.messages.*;
-
+import common.protocol.user_auth.UserDatabase;
 import common.protocol.user_creation.UserCreationRequest;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
@@ -219,12 +219,19 @@ public static void search(String encryptedPath, String videoCategory, String vid
     
             System.out.println("[INFO] Received encrypted video.");
     
-            // 5. Decode base64 fields
-            byte[] encryptedKey = Base64.getDecoder().decode(drm.getEncryptedAESKey());
-            byte[] iv = Base64.getDecoder().decode(drm.getIv());
-            byte[] ciphertext = Base64.getDecoder().decode(drm.getEncryptedVideo());
+             // Extract fields based on expected JSON structure
+    String encryptedVideoB64 = drm.getEncryptedVideo(); // assumes getter
+    String videoCategory = drm.getVideocatagory();
+    String videoName = drm.getVideoname();
+    String videoAgeRating = drm.getVideoagerating();
+
+    // 5. Decode base64 fields
+    byte[] encryptedKey = Base64.getDecoder().decode(UserDatabase.getAesKey(user));
+    byte[] iv = Base64.getDecoder().decode(UserDatabase.getAesIV(user));
+    byte[] ciphertext = Base64.getDecoder().decode(encryptedVideoB64);
+
     
-            // 6. Decrypt AES key using private key
+          /*  // 6. Decrypt AES key using private key
             Console console = System.console();
             if (console == null) throw new IllegalStateException("Console not available.");
             String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
@@ -236,29 +243,49 @@ public static void search(String encryptedPath, String videoCategory, String vid
     
             Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
             elgamal.init(Cipher.DECRYPT_MODE, privKey);
-            byte[] aesKeyBytes = elgamal.doFinal(encryptedKey);
+            byte[] aesKeyBytes = elgamal.doFinal(encryptedKey);*/ 
     
             // 7. Decrypt video with AES/GCM
-            SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(aesKeyBytes, "AES");
+            SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(encryptedKey, "AES");
             Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
             GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
             aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
     
             byte[] decryptedVideo = aesCipher.doFinal(ciphertext);
     
-            // 8. Save decrypted video
-            java.nio.file.Files.write(java.nio.file.Paths.get("decrypted_" + filename), decryptedVideo);
-            System.out.println("[INFO] Video saved to: decrypted_" + filename);
+            // 8. Prompt user where to save
+    Console console = System.console();
+    if (console == null) throw new IllegalStateException("Console not available.");
     
-        } else if (response instanceof StatusMessage) {
-            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
-        } else {
-            System.out.println("[ERROR] Unexpected response type: " + response.getClass().getName());
-        }
-    
-        channel.closeChannel();
+    String savePath = console.readLine("[INPUT] Enter the full path where you want to save the video (without .mp4): ");
+    if (savePath == null || savePath.trim().isEmpty()) {
+        savePath = "decrypted_" + drm.getVideoname();  // fallback default
     }
+    
+    // Remove any existing .mp4 if the user typed it accidentally
+    if (savePath.toLowerCase().endsWith(".mp4")) {
+        savePath = savePath.substring(0, savePath.length() - 4);
+    }
+    
+    savePath += ".mp4"; // Always ensure it ends with .mp4
 
+    java.nio.file.Files.write(java.nio.file.Paths.get(savePath), decryptedVideo);
+   // ✅ Now output the user-friendly download message:
+     System.out.println("\n=== Download Complete ===");
+     System.out.println("Video Name     : " + videoName);
+     System.out.println("Category       : " + videoCategory);
+     System.out.println("Age Rating     : " + videoAgeRating);
+     System.out.println("Saved Location : " + savePath);
+     System.out.println("=========================\n");
+ 
+} else if (response instanceof StatusMessage) {
+    System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+} else {
+    System.out.println("[ERROR] Unexpected response type: " + response.getClass().getName());
+}
+
+channel.closeChannel();
+}
     // Create post login panel
     public static void interactiveSession() throws Exception {
         while (true) {

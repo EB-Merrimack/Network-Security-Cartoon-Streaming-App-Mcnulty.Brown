@@ -24,10 +24,10 @@ public class Unprotector {
         this.aesKey = new SecretKeySpec(aesKeyBytes, "AES");
         this.aesIV = Base64.getDecoder().decode(base64IV);
 
-        unprotectContent(encryptedFile);
+    
     }
 
-    public void unprotectContent(File encryptedFile) throws Exception {
+    public Path unprotectContent(File encryptedFile) throws Exception {
         System.out.println("[DEBUG] Starting unprotection for file: " + encryptedFile.getAbsolutePath());
     
         if (!encryptedFile.exists()) {
@@ -59,6 +59,7 @@ public class Unprotector {
         Files.write(outputPath, decryptedContent);
     
         System.out.println("[SERVER] Decrypted content saved successfully to: " + outputPath.toAbsolutePath());
+        return outputPath;
     }
     
 }

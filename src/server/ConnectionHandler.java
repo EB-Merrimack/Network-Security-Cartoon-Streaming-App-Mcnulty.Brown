@@ -11,10 +11,12 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Base64.Decoder;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import server.Configuration;
 import server.Admin.Admin;
@@ -37,6 +39,7 @@ import common.protocol.messages.DownloadRequestMessage;
 import common.protocol.messages.DownloadResponseMessage;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
+import common.protocol.user_auth.User;
 import common.protocol.user_auth.UserDatabase;
 import merrimackutil.util.NonceCache;
 
@@ -290,34 +293,32 @@ public class ConnectionHandler implements Runnable {
                 Admin.getInstance();
                 System.out.println("[DEBUG] Admin instance loaded successfully.");
                 Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(),  encFile, Admin.getAesIV());
-        
-                // Get the decrypted file
-                File decryptedFile = new File(encFile.getParentFile(), requestedFile);
-                System.out.println("[DEBUG] Decrypted file path: " + decryptedFile.getAbsolutePath());
-        
-                if (!decryptedFile.exists()) {
+                Path decryptedPath = unprotector.unprotectContent(encFile);
+                System.out.println("[DEBUG] Decrypted file path: " + decryptedPath);
+
+                // Check if file exists
+                if (!Files.exists(decryptedPath)) {
                     System.err.println("[SERVER] Decrypted video not found.");
                     channel.sendMessage(new StatusMessage(false, "Failed to decrypt video."));
                     return;
                 }
-        
+
+                // Read the decrypted file
                 System.out.println("[DEBUG] Decrypted file found. Reading bytes...");
-                byte[] decryptedVideo = Files.readAllBytes(decryptedFile.toPath());
-        
+                byte[] decryptedVideo = Files.readAllBytes(decryptedPath);
                 // STEP 2: Generate session AES key for the user
-                System.out.println("[DEBUG] Generating AES session key for user...");
-                KeyGenerator aesGen = KeyGenerator.getInstance("AES");
-                aesGen.init(128);
-                SecretKey sessionKey = aesGen.generateKey();
-        
-                byte[] iv = new byte[12];
-                SecureRandom rand = new SecureRandom();
-                rand.nextBytes(iv);
+               String sessionKeyB64 = UserDatabase.getAesKey(user);
+                SecretKey sessionKey = new SecretKeySpec(Base64.getDecoder().decode(sessionKeyB64), "AES");
+
+               String ivB64 = UserDatabase.getAesIV(user);
+               byte[] iv = Base64.getDecoder().decode(ivB64);
+                
+
         
                 System.out.println("[DEBUG] Encrypting video with session key...");
                 byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
-        
-                // STEP 3: Encrypt AES key with user's ElGamal public key
+
+                /* // STEP 3: Encrypt AES key with user's ElGamal public key
                 System.out.println("[DEBUG] Retrieving user's public key...");
                 String userPubKeyB64 = UserDatabase.getEncodedPublicKey(user);
                 if (userPubKeyB64 == null) {
@@ -331,21 +332,23 @@ public class ConnectionHandler implements Runnable {
                 Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKey.getEncoded());
-        
+         */
                 // STEP 4: Send DownloadResponseMessage
                 System.out.println("[DEBUG] Sending DownloadResponseMessage...");
                 DownloadResponseMessage response = new DownloadResponseMessage(
+                    videodatabase.getVideoCategory(requestedFile),
                     requestedFile,
-                    Base64.getEncoder().encodeToString(reEncrypted),
-                    Base64.getEncoder().encodeToString(encryptedSessionKey),
-                    Base64.getEncoder().encodeToString(iv)
+                    videodatabase.getVideoAgeRating(requestedFile),
+                    Base64.getEncoder().encodeToString(reEncrypted)
+                    
+                    
                 );
         
                 channel.sendMessage(response);
                 System.out.println("[SERVER] Sent encrypted video to user.");
         
-                // Optional: clean up decrypted file
-                decryptedFile.delete();
+                //clean up decrypted file
+                Files.deleteIfExists(decryptedPath); 
         
             } catch (Exception e) {
                 System.err.println("[SERVER ERROR] Failed to process download request: " + e.getMessage());

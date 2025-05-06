@@ -5,34 +5,44 @@ import common.protocol.Message;
 import java.io.InvalidObjectException;
 
 public class DownloadResponseMessage implements Message {
+
+    private String videocatagory;
+    private String videoname;
+    private String videoagerating;
     private String encryptedVideo;
-    private String encryptedAESKey;
-    private String iv;
-    private String filename;
 
     public DownloadResponseMessage() {}
 
-    public DownloadResponseMessage(String filename, String encryptedVideo, String encryptedAESKey, String iv) {
-        this.filename = filename;
+    public DownloadResponseMessage(
+        String encryptedVideo,
+        String videocatagory,
+        String videoname,
+        String videoagerating
+    ) {
         this.encryptedVideo = encryptedVideo;
-        this.encryptedAESKey = encryptedAESKey;
-        this.iv = iv;
+        this.videocatagory = videocatagory;
+        this.videoname = videoname;
+        this.videoagerating = videoagerating;
     }
 
+    
+   
 
-    // Getters
     public String getEncryptedVideo() {
         return encryptedVideo;
     }
-    
-    public String getEncryptedAESKey() {
-        return encryptedAESKey;
-    }
-    
-    public String getIv() {
-        return iv;
+
+    public String getVideocatagory() {
+        return videocatagory;
     }
 
+    public String getVideoname() {
+        return videoname;
+    }
+
+    public String getVideoagerating() {
+        return videoagerating;
+    }
 
     @Override
     public String getType() {
@@ -44,8 +54,9 @@ public class DownloadResponseMessage implements Message {
         JSONObject obj = new JSONObject();
         obj.put("type", getType());
         obj.put("encryptedVideo", encryptedVideo);
-        obj.put("encryptedAESKey", encryptedAESKey);
-        obj.put("iv", iv);
+        obj.put("videocatagory", videocatagory);
+        obj.put("videoname", videoname);
+        obj.put("videoagerating", videoagerating);
         return obj;
     }
 
@@ -54,8 +65,9 @@ public class DownloadResponseMessage implements Message {
         if (!(type instanceof JSONObject)) throw new InvalidObjectException("Expected JSONObject.");
         JSONObject obj = (JSONObject) type;
         encryptedVideo = obj.getString("encryptedVideo");
-        encryptedAESKey = obj.getString("encryptedAESKey");
-        iv = obj.getString("iv");
+        videocatagory = obj.getString("videocatagory");
+        videoname = obj.getString("videoname");
+        videoagerating = obj.getString("videoagerating");
     }
 
     @Override

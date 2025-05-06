@@ -87,18 +87,13 @@ public class videodatabase {
         JsonIO.writeFormattedObject(wrapper, new File(DATABASE_FILE));
     }
 
-
-    /**
-     * Retrieves the encrypted file path for a given video name.
-     * @param videoName the name of the video (not the full path)
-     * @return File object pointing to the encrypted video, or null if not found
-     */
+    // Retrieve the encrypted file path for a given video name
     public static File getVideoFile(String videoName) {
         try {
             List<Video> videoList = loadDatabase();
             for (Video v : videoList) {
                 if (v.getVideoName().equalsIgnoreCase(videoName)) {
-                    Path path = v.getEncryptedPath(); // or v.getPath() depending on your Video.java
+                    Path path = v.getEncryptedPath();
                     return path.toFile();
                 }
             }
@@ -109,10 +104,58 @@ public class videodatabase {
         return null;
     }
 
+    // NEW: Retrieve the video category for a given video name
+    public static String getVideoCategory(String videoName) {
+        try {
+            List<Video> videoList = loadDatabase();
+            for (Video v : videoList) {
+                if (v.getVideoName().equalsIgnoreCase(videoName)) {
+                    return v.getVideoCategory();
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("[videodatabase] Failed to load database: " + e.getMessage());
+        }
+        System.err.println("[videodatabase] Video not found: " + videoName);
+        return null;
+    }
 
+    // NEW: Retrieve the video age rating for a given video name
+    public static String getVideoAgeRating(String videoName) {
+        try {
+            List<Video> videoList = loadDatabase();
+            for (Video v : videoList) {
+                if (v.getVideoName().equalsIgnoreCase(videoName)) {
+                    return v.getVideoAgeRating();
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("[videodatabase] Failed to load database: " + e.getMessage());
+        }
+        System.err.println("[videodatabase] Video not found: " + videoName);
+        return null;
+    }
+
+    // NEW: Retrieve the full Video object for a given video name
+    public static Video getVideo(String videoName) {
+        try {
+            List<Video> videoList = loadDatabase();
+            for (Video v : videoList) {
+                if (v.getVideoName().equalsIgnoreCase(videoName)) {
+                    return v;
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("[videodatabase] Failed to load database: " + e.getMessage());
+        }
+        System.err.println("[videodatabase] Video not found: " + videoName);
+        return null;
+    }
+
+    // Retrieve all videos
     public static List<Video> getAllVideos() {
         try {
-            return loadDatabase(); // This already exists as a private helper
+            return loadDatabase();
         } catch (IOException e) {
             System.err.println("[videodatabase] Error reading video database: " + e.getMessage());
             return new ArrayList<>();
