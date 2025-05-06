@@ -361,8 +361,10 @@ public class ConnectionHandler implements Runnable {
                 }
         
                 System.out.println("[DEBUG] Public key found. Encrypting session key with ElGamal...");
-                PublicKey userPubKey = CryptoUtils.decodeElGamalPublicKey(Base64.getDecoder().decode(userPubKeyB64));
-                Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
+                byte[] keyBytes = Base64.getDecoder().decode(userPubKeyB64);
+                KeyFactory factory = KeyFactory.getInstance("ElGamal", "BC");
+                X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(keyBytes);
+                PublicKey userPubKey = factory.generatePublic(pubKeySpec);                Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
          
                 // STEP 4: Send DownloadResponseMessage
