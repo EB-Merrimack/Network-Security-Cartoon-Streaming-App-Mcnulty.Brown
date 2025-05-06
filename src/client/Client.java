@@ -212,14 +212,16 @@ public static void search(String encryptedPath, String videoCategory, String vid
         byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
         System.out.println("[DEBUG] Private key length: " + privKeyBytes.length);
     
-        String savePath = console.readLine("Enter the path to save the file: ");
-    
-    // Ensure savePath ends with .mp4
-    if (!savePath.toLowerCase().endsWith(".mp4")) {
-        savePath += ".mp4";
-    }
+      // Step 1: Ask the user for the path to save the encrypted file (this should end with .enc)
+      String encryptedSavePath = console.readLine("Enter the path to save the encrypted file: ");
 
-    System.out.println("[INFO] File will be saved as: " + savePath);
+      // Ensure encrypted path ends with .enc
+      if (!encryptedSavePath.toLowerCase().endsWith(".enc")) {
+          encryptedSavePath += ".enc";
+      }
+
+      // Step 2: Inform the user of the selected save path for the encrypted file
+      System.out.println("[INFO] Encrypted file will be saved as: " + encryptedSavePath);
 
     // === Connect to server ===
     System.out.println("[INFO] Downloading video..." + filename);
@@ -234,7 +236,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
 
     // === Send Download Request with savePath ===
     System.out.println("[INFO] Sending download request...");
-    DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes, savePath);
+    DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes, encryptedSavePath);
     channel.sendMessage(downloadMsg);
     
         Message response = channel.receiveMessage();
@@ -292,7 +294,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
         byte[] decryptedVideo = CryptoUtils.decrypt(encryptedVideoBytes, sessionKey, iv); // Use the appropriate decryption method
 
         // Save the decrypted video to a new file
-        Path decryptedFilePath = Path.of(savePath.replace(".enc", "_decrypted.mp4")); // Adjust as needed (e.g., .enc -> .mp4)
+        Path decryptedFilePath = Path.of(encryptedSavePath.replace(".enc", "_decrypted.mp4")); // Adjust as needed (e.g., .enc -> .mp4)
         Files.write(decryptedFilePath, decryptedVideo);
         System.out.println("[INFO] Decrypted video saved to: " + decryptedFilePath.toAbsolutePath());
 
@@ -310,7 +312,7 @@ public static void search(String encryptedPath, String videoCategory, String vid
             System.out.println("Video Name     : " + drm.getVideoname());
             System.out.println("Category       : " + drm.getVideocatagory());
             System.out.println("Age Rating     : " + drm.getVideoagerating());
-            System.out.println("Saved Location : " + savePath);
+            System.out.println("Saved Location : " + encryptedSavePath);
             System.out.println("=========================\n");
     
         } else if (response instanceof StatusMessage) {
