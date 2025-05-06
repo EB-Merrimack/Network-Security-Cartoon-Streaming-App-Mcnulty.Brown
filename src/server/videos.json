@@ -23,6 +23,24 @@
          "videoCategory" : "dis",
          "videoName" : "test",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "surprise",
+         "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "donald",
+         "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/All Together (1942).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "allto",
+         "videoAgeRating" : "pg"
       }
    ]
 }

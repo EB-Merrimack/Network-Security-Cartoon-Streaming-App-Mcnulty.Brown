@@ -32,6 +32,9 @@ public class CryptoUtils {
         byte[] ciphertext = new byte[encryptedData.length - 16];
         System.arraycopy(encryptedData, 0, ciphertext, 0, ciphertext.length);
 
+        // Debug: Print the tag
+        System.out.println("Encryption Tag (Base64): " + encodeBase64(tag));
+
         // Combine IV + ciphertext + tag
         byte[] result = new byte[aesIV.length + ciphertext.length + tag.length];
         System.arraycopy(aesIV, 0, result, 0, aesIV.length);
@@ -52,20 +55,28 @@ public class CryptoUtils {
         byte[] ciphertext = new byte[encryptedData.length - 16];
         System.arraycopy(encryptedData, 0, ciphertext, 0, ciphertext.length);
 
+        // Debug: Print the extracted tag
+        System.out.println("Extracted Tag (Base64): " + encodeBase64(tag));
+
         // Decrypt the ciphertext
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, aesIV);
         cipher.init(Cipher.DECRYPT_MODE, key, spec);
 
         // Perform decryption and verify the tag automatically
-        return cipher.doFinal(ciphertext);  // MAC checked automatically by AES-GCM
+        byte[] decryptedData = cipher.doFinal(ciphertext);
+
+        // Debug: Optionally print the decrypted data (for verification purposes)
+        System.out.println("Decrypted Data (Base64): " + encodeBase64(decryptedData));
+
+        return decryptedData;
     }
 
     public static String encodeBase64(byte[] encoded) {
         return Base64.getEncoder().encodeToString(encoded);
     }
 
-     public static PublicKey decodeElGamalPublicKey(byte[] encodedKey) throws Exception {
+    public static PublicKey decodeElGamalPublicKey(byte[] encodedKey) throws Exception {
         KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", new BouncyCastleProvider());
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encodedKey);
         return keyFactory.generatePublic(keySpec);
