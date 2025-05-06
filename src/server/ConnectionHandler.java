@@ -80,41 +80,53 @@ private final Socket sock;
         try {
             while (true) {
                 System.out.println("[DEBUG] Waiting to receive a message...");
-
-                Message msg = channel.receiveMessage();
-                if (msg == null) {
-                    System.out.println("[DEBUG] Received null message, continuing.");
-                    continue;
+    
+                Message msg;
+                try {
+                    msg = channel.receiveMessage();
+                } catch (Exception e) {
+                    System.err.println("[ERROR] Failed to parse JSON message. Assuming raw socket communication.");
+                    handleRawDownload(sock);  // Switch to raw after login
+                    return;
                 }
+    
+                if (msg == null) {
+                    System.out.println("[DEBUG] Received null message. Ending session.");
+                    return;
+                }
+    
                 System.out.println("[DEBUG] Received message of type: " + msg.getType());
-
+    
                 switch (msg.getType()) {
                     case "create-account":
                         handleCreateMessage(msg);
                         return;
+    
                     case "authenticate":
                         boolean success = AuthenticationHandler.authenticate((AuthenticateMessage) msg);
-                        channel.sendMessage(new StatusMessage(success, success ? "Authentication successful." : "Authentication failed. Check your password or OTP."));
+                        channel.sendMessage(new StatusMessage(success, success ? "Authentication successful." : "Authentication failed."));
                         return;
+    
                     case "AdminAuth":
                         boolean adminSuccess = AdminAuthenticator.authenticate((AdminAuth) msg);
-                        channel.sendMessage(new StatusMessage(adminSuccess, adminSuccess ? "Authentication successful." : "Authentication failed. Check your password or OTP."));
+                        channel.sendMessage(new StatusMessage(adminSuccess, adminSuccess ? "Authentication successful." : "Authentication failed."));
                         if (!adminSuccess) return;
                         break;
+    
                     case "PubKeyRequest":
                         PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
                         String username = pubKeyRequest.getUser();
                         String base64Key = UserDatabase.getEncodedPublicKey(username);
                         channel.sendMessage(new StatusMessage(true, base64Key));
                         break;
+    
                     case "AdminInsertVideoRequest":
                         handleAdminInsertVideoRequest(msg);
                         return;
-                    case "DownloadRequest":
-                        System.out.println("[SERVER] Switching to raw download mode.");
-                        handleRawDownload(sock);
-                        return;
+    
+                    // DO NOT handle DownloadRequest as JSON anymore!
                     default:
+                        System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
                         channel.sendMessage(new StatusMessage(false, "Unsupported message type."));
                 }
             }
@@ -127,15 +139,17 @@ private final Socket sock;
         try {
             DataInputStream in = new DataInputStream(sock.getInputStream());
             DataOutputStream out = new DataOutputStream(sock.getOutputStream());
-
+    
+            // Read raw fields sent by the client
             String username = in.readUTF();
             String filename = in.readUTF();
             int keyLen = in.readInt();
             byte[] privKeyBytes = new byte[keyLen];
             in.readFully(privKeyBytes);
-
+    
             DownloadRequestMessage msg = new DownloadRequestMessage(filename, username, privKeyBytes);
-            handleDownloadRequest(msg);
+            handleDownloadRequest(msg, out);  // Forward to the real handler with stream
+    
         } catch (Exception e) {
             System.err.println("[SERVER ERROR - RAW DOWNLOAD] " + e.getMessage());
             e.printStackTrace();
@@ -229,94 +243,85 @@ private final Socket sock;
         }
       
 
-        private void handleDownloadRequest(DownloadRequestMessage msg) {
-    try {
-        System.out.println("[SERVER] Handling DownloadRequest.");
-        String requestedFile = msg.getFilename();
-        String user = msg.getUsername();
-        System.out.println("[SERVER] User " + user + " requested file: " + requestedFile);
-
-        // 1. Locate the video
-        List<Video> allVideos = videodatabase.getAllVideos();
-        Video target = allVideos.stream()
-            .filter(v -> v.getVideoName().equals(requestedFile))
-            .findFirst()
-            .orElse(null);
-
-        if (target == null) {
-            channel.sendMessage(new StatusMessage(false, "Video not found."));
-            return;
+        private void handleDownloadRequest(DownloadRequestMessage msg, DataOutputStream out) {
+            try {
+                System.out.println("[SERVER] Handling DownloadRequest.");
+                String requestedFile = msg.getFilename();
+                String user = msg.getUsername();
+        
+                List<Video> allVideos = videodatabase.getAllVideos();
+                Video target = allVideos.stream()
+                    .filter(v -> v.getVideoName().equals(requestedFile))
+                    .findFirst()
+                    .orElse(null);
+        
+                if (target == null) {
+                    out.writeUTF("ERROR");
+                    out.writeUTF("Video not found.");
+                    return;
+                }
+        
+                File encFile = target.getEncryptedPath().toFile();
+                if (!encFile.exists()) {
+                    out.writeUTF("ERROR");
+                    out.writeUTF("Encrypted file not found.");
+                    return;
+                }
+        
+                Admin.getInstance();
+                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), encFile, Admin.getAesIV());
+                Path decryptedPath = unprotector.unprotectContent(encFile);
+        
+                if (!Files.exists(decryptedPath)) {
+                    out.writeUTF("ERROR");
+                    out.writeUTF("Failed to decrypt video.");
+                    return;
+                }
+        
+                byte[] decryptedVideo = Files.readAllBytes(decryptedPath);
+        
+                // Encrypt with a temporary AES key and IV
+                SecureRandom rand = new SecureRandom();
+                byte[] sessionKeyBytes = new byte[16];
+                rand.nextBytes(sessionKeyBytes);
+                SecretKey sessionKey = new SecretKeySpec(sessionKeyBytes, "AES");
+        
+                byte[] iv = new byte[12];
+                rand.nextBytes(iv);
+        
+                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
+        
+                // Wrap AES key with user's public key
+                String userPubKeyB64 = UserDatabase.getEncodedPublicKey(user);
+                byte[] pubKeyBytes = Base64.getDecoder().decode(userPubKeyB64);
+                KeyFactory factory = KeyFactory.getInstance("ElGamal", "BC");
+                PublicKey userPubKey = factory.generatePublic(new X509EncodedKeySpec(pubKeyBytes));
+        
+                Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
+                elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
+                byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
+        
+                // === Send response ===
+                out.writeUTF("DOWNLOAD_RESPONSE");
+                out.writeUTF(Base64.getEncoder().encodeToString(reEncrypted));
+                out.writeUTF(Base64.getEncoder().encodeToString(encryptedSessionKey));
+                out.writeUTF(Base64.getEncoder().encodeToString(iv));
+                out.writeUTF(target.getVideoCategory());
+                out.writeUTF(target.getVideoName());
+                out.writeUTF(target.getVideoAgeRating());
+                out.flush();
+        
+                Files.deleteIfExists(decryptedPath);
+                System.out.println("[SERVER] Sent encrypted video and cleaned up.");
+        
+            } catch (Exception e) {
+                System.err.println("[SERVER ERROR] " + e.getMessage());
+                e.printStackTrace();
+                try {
+                    out.writeUTF("ERROR");
+                    out.writeUTF("Download failed: " + e.getMessage());
+                } catch (Exception ignored) {}
+            }
         }
-
-        File encFile = target.getEncryptedPath().toFile();
-        if (!encFile.exists()) {
-            channel.sendMessage(new StatusMessage(false, "Encrypted file not found."));
-            return;
-        }
-
-        // 2. Decrypt with admin AES key and IV
-        Admin.getInstance();
-        Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), encFile, Admin.getAesIV());
-        Path decryptedPath = unprotector.unprotectContent(encFile);
-
-        if (!Files.exists(decryptedPath)) {
-            channel.sendMessage(new StatusMessage(false, "Failed to decrypt video."));
-            return;
-        }
-
-        byte[] decryptedVideo = Files.readAllBytes(decryptedPath);
-
-        // 3. Generate AES session key and IV
-        SecureRandom rand = new SecureRandom();
-        byte[] sessionKeyBytes = new byte[16];
-        rand.nextBytes(sessionKeyBytes);
-        SecretKey sessionKey = new SecretKeySpec(sessionKeyBytes, "AES");
-
-        byte[] iv = new byte[12];
-        rand.nextBytes(iv);
-
-        // 4. Encrypt the video
-        byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
-
-        // 5. Encrypt AES key with user's ElGamal public key
-        String userPubKeyB64 = UserDatabase.getEncodedPublicKey(user);
-        if (userPubKeyB64 == null) {
-            channel.sendMessage(new StatusMessage(false, "No public key found for user."));
-            return;
-        }
-
-        byte[] pubKeyBytes = Base64.getDecoder().decode(userPubKeyB64);
-        KeyFactory factory = KeyFactory.getInstance("ElGamal", "BC");
-        PublicKey userPubKey = factory.generatePublic(new X509EncodedKeySpec(pubKeyBytes));
-
-        Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
-        elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
-        byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
-
-        // === Send data directly via DataOutputStream ===
-        DataOutputStream out = new DataOutputStream(channel.getOutputStream());
-
-        out.writeUTF("DOWNLOAD_RESPONSE"); // a label so client knows what to expect
-        out.writeUTF(Base64.getEncoder().encodeToString(reEncrypted));
-        out.writeUTF(Base64.getEncoder().encodeToString(encryptedSessionKey));
-        out.writeUTF(Base64.getEncoder().encodeToString(iv));
-        out.writeUTF(target.getVideoCategory());
-        out.writeUTF(target.getVideoName());
-        out.writeUTF(target.getVideoAgeRating());
-
-        out.flush();
-        System.out.println("[SERVER] Sent encrypted video to user (raw format).");
-
-        Files.deleteIfExists(decryptedPath); // cleanup
-        System.out.println("[SERVER] Cleaned up temporary file.");
-
-    } catch (Exception e) {
-        System.err.println("[SERVER ERROR] " + e.getMessage());
-        e.printStackTrace();
-        try {
-            channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
-        } catch (Exception ignored) {}
-    }
-}
     
 }
