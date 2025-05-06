@@ -332,7 +332,7 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[DEBUG] Encrypting video with session key...");
                 byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
 
-                /* // STEP 3: Encrypt AES key with user's ElGamal public key
+                 // STEP 3: Encrypt AES key with user's ElGamal public key
                 System.out.println("[DEBUG] Retrieving user's public key...");
                 String userPubKeyB64 = UserDatabase.getEncodedPublicKey(user);
                 if (userPubKeyB64 == null) {
@@ -346,7 +346,7 @@ public class ConnectionHandler implements Runnable {
                 Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKey.getEncoded());
-         */
+         
                 // STEP 4: Send DownloadResponseMessage
                 System.out.println("[DEBUG] Sending DownloadResponseMessage...");
                 DownloadResponseMessage response = new DownloadResponseMessage(

@@ -377,10 +377,20 @@ channel.closeChannel();
             String password = new String(console.readPassword());
     
             // 1. Generate ElGamal keypair
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ElGamal");
-            keyGen.initialize(512);
+            System.out.println("[DEBUG] Generating ElGamal key pair...");
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ElGamal", "BC");
+            SecureRandom rand = SecureRandom.getInstanceStrong();  // Strong random source
+            keyGen.initialize(512, rand);  // Pass it explicitly
             KeyPair kp = keyGen.generateKeyPair();
-    
+
+            
+            System.out.println("[DEBUG] Encoding public key...");
+            String pubKeyEncoded = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
+            String privKeyEncoded = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
+            
+            System.out.println("[DEBUG] Public Key (Base64):\n" + pubKeyEncoded);
+            
+           
             // 2. Generate AES key
             KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
             aesKeyGen.init(128);
@@ -388,7 +398,6 @@ channel.closeChannel();
     
             // 3. Generate AES IV
             byte[] rawIV = new byte[12];
-            SecureRandom rand = new SecureRandom();
             rand.nextBytes(rawIV);
             GCMParameterSpec gcmSpec = new GCMParameterSpec(128, rawIV); // 128-bit auth tag
     
@@ -398,8 +407,6 @@ channel.closeChannel();
             byte[] encryptedAESKey = elgCipher.doFinal(aesKey.getEncoded());
     
             // 5. Base64 encode all values
-            String pubKeyEncoded = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
-            String privKeyEncoded = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
             String encryptedAESKeyB64 = Base64.getEncoder().encodeToString(encryptedAESKey);
             String ivEncoded = Base64.getEncoder().encodeToString(rawIV);
     
