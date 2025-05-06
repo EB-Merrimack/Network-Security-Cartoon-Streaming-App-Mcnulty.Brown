@@ -28,82 +28,128 @@ public class adminclient {
     private static boolean insertvideo = false;
     private static String videofile;
 
-    // usage help
+    /**
+     * Prints the usage/help information for the admin client.
+     * This method provides instructions on how to use the command-line arguments.
+     * It terminates the program after displaying the information.
+     */
     public static void usage() {
+        // Display the usage syntax for the admin client
         System.out.println("usage:");
         System.out.println("  adminclient -i -u <user> -h <host> -p <portnum> -v <filepath>");
+        
+        // Display the available command-line options and their descriptions
         System.out.println("options:");
         System.out.println("  -i, --insertvideo   Insert a new video into the server.");
         System.out.println("  -u, --user          Username.");
         System.out.println("  -h, --host          Server hostname.");
         System.out.println("  -p, --port          Server port number.");
-        System.out.println("  -v, --videofile     Path toVideo file to upload.");
+        System.out.println("  -v, --videofile     Path to video file to upload.");
+        
+        // Exit the program after displaying the usage information
         System.exit(1);
     }
 
-    // parse arguments
+    /**
+     * Parses the command-line arguments for the admin client.
+     * 
+     * @param args the array of command-line arguments
+     * @throws Exception if there is an error during parsing
+     */
     public static void processArgs(String[] args) throws Exception {
+        // If no arguments are provided, show usage information
         if (args.length == 0) {
             usage();
         }
 
         OptionParser parser;
         LongOption[] opts = new LongOption[5];
-        opts[0] = new LongOption("insertvideo", false, 'i');
-        opts[1] = new LongOption("user", true, 'u');
-        opts[2] = new LongOption("host", true, 'h');
-        opts[3] = new LongOption("port", true, 'p');
-        opts[4] = new LongOption("videofile", true, 'v');
+        opts[0] = new LongOption("insertvideo", false, 'i');  // Option to insert a new video
+        opts[1] = new LongOption("user", true, 'u');         // Username option
+        opts[2] = new LongOption("host", true, 'h');         // Hostname option
+        opts[3] = new LongOption("port", true, 'p');         // Port number option
+        opts[4] = new LongOption("videofile", true, 'v');    // Video file path option
 
+        // Initialize the option parser with the provided arguments
         parser = new OptionParser(args);
         parser.setLongOpts(opts);
         parser.setOptString("iu:h:p:v:");
 
         Tuple<Character, String> currOpt;
+        // Iterate through each argument and process it according to its type
         while (parser.getOptIdx() != args.length) {
             currOpt = parser.getLongOpt(false);
 
             switch (currOpt.getFirst()) {
-                case 'i': insertvideo = true; break;
-                case 'u': user = currOpt.getSecond(); break;
-                case 'h': host = currOpt.getSecond(); break;
-                case 'p': port = Integer.parseInt(currOpt.getSecond()); break;
-                case 'v': videofile = currOpt.getSecond(); break;
+                case 'i': 
+                    insertvideo = true; 
+                    break;
+                case 'u': 
+                    user = currOpt.getSecond(); 
+                    break;
+                case 'h': 
+                    host = currOpt.getSecond(); 
+                    break;
+                case 'p': 
+                    port = Integer.parseInt(currOpt.getSecond()); 
+                    break;
+                case 'v': 
+                    videofile = currOpt.getSecond(); 
+                    break;
                 case '?':
-                default: usage(); break;
+                default: 
+                    usage(); 
+                    break;
             }
         }
 
+        // Validate that all required arguments are provided
         if (!insertvideo || user == null || host == null || port == 0 || videofile == null) {
             usage();
         }
     }
 
-    // main logic
+    /**
+     * Main logic entry point for the admin client.
+     *
+     * @param args the command-line arguments
+     * @throws Exception if an error occurs during execution
+     */
     public static void main(String[] args) throws Exception {
+        // Add Bouncy Castle as a Security Provider
         Security.addProvider(new BouncyCastleProvider());
+
+        // Load SSL trust store settings
         System.setProperty("javax.net.ssl.trustStore", "truststore.jks");
         System.setProperty("javax.net.ssl.trustStorePassword", "test12345");
-    
+
+        // Parse the command-line arguments
         processArgs(args);
 
-       if (!authenticateUser()) {
+        // Authenticate the user before proceeding
+        if (!authenticateUser()) {
             System.out.println("[ERROR] Authentication failed. Exiting.");
             System.exit(1);
         }
 
         System.out.println("[INFO] Authentication successful!");
 
-        // After login, upload the video
+        // After successful login, proceed to upload the video
         sendVideoFile();
     }
 
-    // authenticate admin
+    /**
+     * Authenticate the admin user.
+     *
+     * @return true if the authentication is successful, false otherwise
+     * @throws Exception if an error occurs during authentication
+     */
     private static boolean authenticateUser() throws Exception {
         Console console = System.console();
         String password;
         String otp;
 
+        // Read the password and OTP from the user
         if (console != null) {
             char[] passwordChars = console.readPassword("Enter password: ");
             password = new String(passwordChars);
@@ -116,32 +162,40 @@ public class adminclient {
             otp = scanner.nextLine();
         }
 
+        // Connect to the server
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
 
+        // Create a ProtocolChannel to send authenticated messages
         channel = new ProtocolChannel(socket);
         channel.addMessageType(new StatusMessage());
         channel.addMessageType(new AdminAuth());
         channel.addMessageType(new AdminInsertVideoRequest());
 
+        // Send the authentication message
         AdminAuth authMsg = new AdminAuth(user, password, otp);
         channel.sendMessage(authMsg);
         System.out.println("[INFO] Sent authentication message.");
 
+        // Receive the response from the server
         Message response = channel.receiveMessage();
         if (!(response instanceof StatusMessage)) {
             System.out.println("[ERROR] Unexpected response: " + response.getClass().getName());
             return false;
         }
 
+        // Check the status of the response
         StatusMessage status = (StatusMessage) response;
         return status.getStatus();
     }
 
-    // send video after authentication
-   // send video after authentication
-private static void sendVideoFile() throws Exception {
+    /**
+     * Sends a video file after authentication.
+     * 
+     * @throws Exception if an error occurs while sending the video file
+     */
+    private static void sendVideoFile() throws Exception {
 
         File file = new File(videofile);
         if (!file.exists()) {
@@ -152,6 +206,7 @@ private static void sendVideoFile() throws Exception {
         // Use BufferedReader for cleaner input handling
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
+        // Collect video information from the user
         System.out.print("Enter video name (or '1' to set it to null): ");
         String videoname = reader.readLine().trim();
         if (videoname.equals("1") || videoname.isEmpty()) {
@@ -183,7 +238,7 @@ private static void sendVideoFile() throws Exception {
         Message resp = channel.receiveMessage();
         System.out.println("[DEBUG] Received response: " + (resp != null ? resp.getType() : "null"));
 
-
+        // Check the response
         if (resp instanceof StatusMessage) {
             StatusMessage statusMessage = (StatusMessage) resp;
             if (statusMessage.getStatus()) {
@@ -196,17 +251,24 @@ private static void sendVideoFile() throws Exception {
         }
     }
 
-private static void clearConsole() {
-    try {
-        // Works on Unix/Linux/macOS
-        if (System.getProperty("os.name").contains("Windows")) {
-            new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
-        } else {
-            System.out.print("\033[H\033[2J");
-            System.out.flush();
+    /**
+     * Clear the console screen. Works on Unix/Linux/macOS and Windows.
+     * The method uses the ANSI escape sequences to clear the screen.
+     * On Windows, it uses the cls command to clear the screen.
+     * If the clear command fails, the method prints a warning message.
+     */
+    private static void clearConsole() {
+        try {
+            // Works on Unix/Linux/macOS
+            if (System.getProperty("os.name").contains("Windows")) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                // ANSI escape sequences to clear the screen
+                System.out.print("\033[H\033[2J");
+                System.out.flush();
+            }
+        } catch (Exception e) {
+            System.out.println("[Warning] Could not clear console.");
         }
-    } catch (Exception e) {
-        System.out.println("[Warning] Could not clear console.");
     }
-}
 }
