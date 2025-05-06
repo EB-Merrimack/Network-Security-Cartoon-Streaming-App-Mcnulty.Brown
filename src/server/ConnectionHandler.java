@@ -337,26 +337,33 @@ public class ConnectionHandler implements Runnable {
         // === Send data directly via DataOutputStream ===
         DataOutputStream out = new DataOutputStream(channel.getOutputStream());
 
-        out.writeUTF("DOWNLOAD_RESPONSE"); // a label so client knows what to expect
-        out.writeInt(reEncrypted.length);
+        System.out.println("[SERVER] Starting download response.");
 
-        // Stream the video in binary chunks
+        out.writeUTF("DOWNLOAD_RESPONSE"); // a label so client knows what to expect
+        out.writeInt(reEncrypted.length); // Send the length of the video
+        System.out.println("[SERVER] Sent encrypted video length: " + reEncrypted.length);
+
         int chunkSize = 4096;
         int offset = 0;
         while (offset < reEncrypted.length) {
             int len = Math.min(chunkSize, reEncrypted.length - offset);
-            out.write(reEncrypted, offset, len);
+            out.write(reEncrypted, offset, len); // Send the video data in chunks
             offset += len;
+            System.out.println("[SERVER] Sent chunk of size: " + len + " bytes, total sent: " + offset);
         }
-        out.writeUTF(Base64.getEncoder().encodeToString(encryptedSessionKey));
-        out.writeUTF(Base64.getEncoder().encodeToString(iv));
+
+        out.writeUTF(Base64.getEncoder().encodeToString(encryptedSessionKey)); // Send the encrypted session key
+        System.out.println("[SERVER] Sent encrypted session key (Base64): " + encryptedSessionKey.length);
+
+        out.writeUTF(Base64.getEncoder().encodeToString(iv)); // Send the IV
+        System.out.println("[SERVER] Sent IV (Base64): " + iv.length);
+
         out.writeUTF(target.getVideoCategory());
         out.writeUTF(target.getVideoName());
         out.writeUTF(target.getVideoAgeRating());
 
         out.flush();
-        System.out.println("[SERVER] Sent encrypted video to user (raw format).");
-
+        System.out.println("[SERVER] Sent all data, waiting for client to receive.");
         Files.deleteIfExists(decryptedPath); // cleanup
         System.out.println("[SERVER] Cleaned up temporary file.");
 

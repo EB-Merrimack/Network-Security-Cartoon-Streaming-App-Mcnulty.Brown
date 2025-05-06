@@ -230,32 +230,43 @@ public static void search(String encryptedPath, String videoCategory, String vid
     // Read raw stream from server
     DataInputStream in = new DataInputStream(socket.getInputStream());
 
-    // Read IV length and bytes
-    int ivLength = in.readInt();
-    byte[] iv = new byte[ivLength];
-    in.readFully(iv);
+   
 
     // Read encrypted AES key length and bytes
-    int keyLength = in.readInt();
-    byte[] encryptedKey = new byte[keyLength];
-    in.readFully(encryptedKey);
-
-    // Read encrypted video length and bytes
-    long cipherLength = in.readLong();
-    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-
-    // Read the encrypted video in chunks (e.g., 8KB)
-    byte[] chunk = new byte[8192];
-    long totalRead = 0;
-    while (totalRead < cipherLength) {
-        int bytesToRead = (int) Math.min(chunk.length, cipherLength - totalRead);
-        int bytesRead = in.read(chunk, 0, bytesToRead);
-        if (bytesRead == -1) {
-            throw new IOException("Unexpected end of stream while reading video data");
+    int ivLength = in.readInt();
+        if (ivLength < 0) {
+            throw new IllegalArgumentException("Received negative IV length: " + ivLength);
         }
-        buffer.write(chunk, 0, bytesRead);
-        totalRead += bytesRead;
-    }
+        byte[] iv = new byte[ivLength];
+        in.readFully(iv);
+
+        // Read encrypted AES key length and bytes
+        int keyLength = in.readInt();
+        if (keyLength < 0) {
+            throw new IllegalArgumentException("Received negative encrypted key length: " + keyLength);
+        }
+        byte[] encryptedKey = new byte[keyLength];
+        in.readFully(encryptedKey);
+
+        // Read encrypted video length and bytes
+        long cipherLength = in.readLong();
+        if (cipherLength < 0) {
+            throw new IllegalArgumentException("Received negative video length: " + cipherLength);
+        }
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+
+        // Read the encrypted video in chunks (e.g., 8KB)
+        byte[] chunk = new byte[8192];
+        long totalRead = 0;
+        while (totalRead < cipherLength) {
+            int bytesToRead = (int) Math.min(chunk.length, cipherLength - totalRead);
+            int bytesRead = in.read(chunk, 0, bytesToRead);
+            if (bytesRead == -1) {
+                throw new IOException("Unexpected end of stream while reading video data");
+            }
+            buffer.write(chunk, 0, bytesRead);
+            totalRead += bytesRead;
+        }
 
     byte[] ciphertext = buffer.toByteArray();
     System.out.println("[DEBUG] Received " + ciphertext.length + " bytes of encrypted video.");
