@@ -25,8 +25,10 @@ import common.protocol.messages.StatusMessage;
 
 import java.io.PrintWriter;
 import java.io.InvalidObjectException;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * This class provides a communication channel for the protocol
@@ -137,6 +139,14 @@ import java.io.IOException;
       System.out.println(msg);
    }
 
+
+   public OutputStream getOutputStream() throws IOException {
+      return this.sock.getOutputStream();  
+    }
+
+    public InputStream getInputStream() throws IOException {
+      return sock.getInputStream();
+}
 
 
  }

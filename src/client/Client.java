@@ -1,8 +1,13 @@
 package client;
 
 import java.io.Console;
+import java.io.DataInputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
 
 import javax.crypto.Cipher;
@@ -10,9 +15,11 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.security.Security;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
@@ -192,116 +199,115 @@ public static void search(String encryptedPath, String videoCategory, String vid
 
     // Download file
     public static void download(String filename) throws Exception {
-        checkAuthentication();
-    
-        System.out.println("[INFO] Requesting private key...");
-        Console console = System.console();
-        if (console == null) {
-            throw new IllegalStateException("Console not available. Please run in a real terminal.");
-        }
-    
-        String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
-        byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
-        System.out.println("[DEBUG] Private key length: " + privKeyBytes.length);
-    
-        System.out.println("[INFO] Downloading video..." + filename);
-    
-        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-        socket.startHandshake();
-    
-        ProtocolChannel channel = new ProtocolChannel(socket);
-        channel.addMessageType(new DownloadRequestMessage());
-        channel.addMessageType(new DownloadResponseMessage());
-        channel.addMessageType(new StatusMessage());
-    
-        System.out.println("[INFO] Sending download request...");
-        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes);
-        channel.sendMessage(downloadMsg);
-    
-        Message response = channel.receiveMessage();
-        System.out.println("[DEBUG] Received message type: " + (response != null ? response.getType() : "null"));
-    
-        if (response instanceof DownloadResponseMessage) {
-            DownloadResponseMessage drm = (DownloadResponseMessage) response;
-            System.out.println("[INFO] Received encrypted video.");
-    
-            // === DEBUG Fields ===
-            System.out.println("[DEBUG] Encrypted AES key (B64): " + drm.getEncryptedAESKey());
-            System.out.println("[DEBUG] IV (B64): " + drm.getIv());
-            System.out.println("[DEBUG] Encrypted Video (B64 Length): " + drm.getEncryptedVideo().length());
-    
-            // Decode fields
-            byte[] encryptedKey = Base64.getDecoder().decode(drm.getEncryptedAESKey());
-            byte[] iv = Base64.getDecoder().decode(drm.getIv());
-            byte[] ciphertext = Base64.getDecoder().decode(drm.getEncryptedVideo());
-    
-            // === Unwrap AES key ===
-            byte[] aesKeyBytes;
-            try {
-                java.security.spec.PKCS8EncodedKeySpec keySpec = new java.security.spec.PKCS8EncodedKeySpec(privKeyBytes);
-                java.security.KeyFactory keyFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
-                java.security.PrivateKey privKey = keyFactory.generatePrivate(keySpec);
-    
-                Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
-                elgamal.init(Cipher.DECRYPT_MODE, privKey);
-                aesKeyBytes = elgamal.doFinal(encryptedKey);
-    
-                System.out.println("[DEBUG] Unwrapped AES key (length): " + aesKeyBytes.length);
-                System.out.println("[DEBUG] AES key (Base64): " + Base64.getEncoder().encodeToString(aesKeyBytes));
-            } catch (Exception e) {
-                System.err.println("[ERROR] Failed to unwrap AES key: " + e.getMessage());
-                e.printStackTrace();
-                channel.closeChannel();
-                return;
-            }
-    
-            // === AES/GCM Decryption ===
-            byte[] decryptedVideo;
-            try {
-                SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(aesKeyBytes, "AES");
-                Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
-                GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
-                aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
-                decryptedVideo = aesCipher.doFinal(ciphertext);
-                System.out.println("[DEBUG] Video decrypted successfully. Bytes: " + decryptedVideo.length);
-            } catch (Exception e) {
-                System.err.println("[ERROR] AES/GCM decryption failed: " + e.getMessage());
-                e.printStackTrace();
-                channel.closeChannel();
-                return;
-            }
-    
-            // === Save to file ===
-            String savePath = console.readLine("[INPUT] Enter the full path where you want to save the video (without .mp4): ");
-            if (savePath == null || savePath.trim().isEmpty()) {
-                savePath = "decrypted_" + drm.getVideoname(); // fallback name
-            }
-            if (savePath.toLowerCase().endsWith(".mp4")) {
-                savePath = savePath.substring(0, savePath.length() - 4);
-            }
-            savePath += ".mp4";
-    
-            java.nio.file.Files.write(java.nio.file.Paths.get(savePath), decryptedVideo);
-    
-            // === User-friendly summary ===
-            System.out.println("\n=== Download Complete ===");
-            System.out.println("Video Name     : " + drm.getVideoname());
-            System.out.println("Category       : " + drm.getVideocatagory());
-            System.out.println("Age Rating     : " + drm.getVideoagerating());
-            System.out.println("Saved Location : " + savePath);
-            System.out.println("=========================\n");
-    
-        } else if (response instanceof StatusMessage) {
-            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
-        } else {
-            System.out.println("[ERROR] Unexpected response type: " + response.getClass().getName());
-        }
-    
-        channel.closeChannel();
+    checkAuthentication();
+
+    System.out.println("[INFO] Requesting private key...");
+    Console console = System.console();
+    if (console == null) {
+        throw new IllegalStateException("Console not available. Please run in a real terminal.");
     }
 
-    
+    String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
+    byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
+    System.out.println("[DEBUG] Private key length: " + privKeyBytes.length);
+
+    System.out.println("[INFO] Downloading video..." + filename);
+
+    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+    socket.startHandshake();
+
+    ProtocolChannel channel = new ProtocolChannel(socket);
+    channel.addMessageType(new DownloadRequestMessage());
+    channel.addMessageType(new StatusMessage());
+
+    // Send download request
+    DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes);
+    channel.sendMessage(downloadMsg);
+
+    // Read raw stream from server
+    DataInputStream in = new DataInputStream(socket.getInputStream());
+
+    // Read IV length and bytes
+    int ivLength = in.readInt();
+    byte[] iv = new byte[ivLength];
+    in.readFully(iv);
+
+    // Read encrypted AES key length and bytes
+    int keyLength = in.readInt();
+    byte[] encryptedKey = new byte[keyLength];
+    in.readFully(encryptedKey);
+
+    // Read encrypted video length and bytes
+    int cipherLength = in.readInt();
+    byte[] ciphertext = new byte[cipherLength];
+    in.readFully(ciphertext);
+
+    // Unwrap AES key
+    byte[] aesKeyBytes;
+    try {
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privKeyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", "BC");
+        PrivateKey privKey = keyFactory.generatePrivate(keySpec);
+
+        Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
+        elgamal.init(Cipher.DECRYPT_MODE, privKey);
+        aesKeyBytes = elgamal.doFinal(encryptedKey);
+
+        System.out.println("[DEBUG] Unwrapped AES key (length): " + aesKeyBytes.length);
+    } catch (Exception e) {
+        System.err.println("[ERROR] Failed to unwrap AES key: " + e.getMessage());
+        e.printStackTrace();
+        channel.closeChannel();
+        return;
+    }
+
+    // AES/GCM Decryption
+    byte[] decryptedVideo;
+    try {
+        SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
+        Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+        aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
+        decryptedVideo = aesCipher.doFinal(ciphertext);
+        System.out.println("[DEBUG] Video decrypted successfully. Bytes: " + decryptedVideo.length);
+    } catch (Exception e) {
+        System.err.println("[ERROR] AES/GCM decryption failed: " + e.getMessage());
+        e.printStackTrace();
+        channel.closeChannel();
+        return;
+    }
+
+    // Prompt user for folder location
+    String folderPath = console.readLine("[INPUT] Enter a folder path to save the video (e.g., C:\\Users\\erinm\\Downloads): ");
+    if (folderPath == null || folderPath.trim().isEmpty()) {
+        System.out.println("[WARN] No folder path entered. Using current directory.");
+        folderPath = ".";
+    }
+
+    // Ensure folder exists
+    Files.createDirectories(Paths.get(folderPath));
+
+    // Ask for video file name
+    String filenameInput = console.readLine("[INPUT] Enter a name for the saved video (without .mp4): ");
+    if (filenameInput == null || filenameInput.trim().isEmpty()) {
+        filenameInput = "downloaded_video";
+    }
+    if (!filenameInput.toLowerCase().endsWith(".mp4")) {
+        filenameInput += ".mp4";
+    }
+
+    String fullPath = Paths.get(folderPath, filenameInput).toString();
+    Files.write(Paths.get(fullPath), decryptedVideo);
+
+    System.out.println("\n=== Download Complete ===");
+    System.out.println("Saved Location : " + fullPath);
+    System.out.println("=========================");
+
+    channel.closeChannel();
+}
+
+
     // Create post login panel
     public static void interactiveSession() throws Exception {
         while (true) {
