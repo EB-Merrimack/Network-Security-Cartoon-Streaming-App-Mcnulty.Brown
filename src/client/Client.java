@@ -2,7 +2,9 @@ package client;
 
 import java.io.Console;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -217,33 +219,36 @@ public static void search(String encryptedPath, String videoCategory, String vid
     SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
     socket.startHandshake();
 
-    ProtocolChannel channel = new ProtocolChannel(socket);
-    channel.addMessageType(new DownloadRequestMessage());
-    channel.addMessageType(new StatusMessage());
-
-    // Send download request
-    DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes);
-    channel.sendMessage(downloadMsg);
-
-    // Read raw stream from server
+    DataOutputStream out = new DataOutputStream(socket.getOutputStream());
     DataInputStream in = new DataInputStream(socket.getInputStream());
 
-    // Read IV length and bytes
-    int ivLength = in.readInt();
-    byte[] iv = new byte[ivLength];
-    in.readFully(iv);
+    // === Send download request manually ===
+    out.writeUTF("DownloadRequest");
+    out.writeUTF(user);
+    out.writeUTF(filename);
+    out.writeInt(privKeyBytes.length);
+    out.write(privKeyBytes);
+    out.flush();
+    System.out.println("[INFO] Sent DownloadRequest.");
 
-    // Read encrypted AES key length and bytes
-    int keyLength = in.readInt();
-    byte[] encryptedKey = new byte[keyLength];
-    in.readFully(encryptedKey);
+    // === Receive response ===
+    String label = in.readUTF();
+    if (!label.equals("DOWNLOAD_RESPONSE")) {
+        System.err.println("[ERROR] Unexpected label: " + label);
+        socket.close();
+        return;
+    }
 
-    // Read encrypted video length and bytes
-    int cipherLength = in.readInt();
-    byte[] ciphertext = new byte[cipherLength];
-    in.readFully(ciphertext);
+    byte[] encryptedVideo = Base64.getDecoder().decode(in.readUTF());
+    byte[] encryptedAESKey = Base64.getDecoder().decode(in.readUTF());
+    byte[] iv = Base64.getDecoder().decode(in.readUTF());
+    String category = in.readUTF();
+    String videoname = in.readUTF();
+    String agerating = in.readUTF();
 
-    // Unwrap AES key
+    System.out.println("[INFO] Received encrypted video.");
+
+    // === Unwrap AES Key ===
     byte[] aesKeyBytes;
     try {
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privKeyBytes);
@@ -252,59 +257,52 @@ public static void search(String encryptedPath, String videoCategory, String vid
 
         Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
         elgamal.init(Cipher.DECRYPT_MODE, privKey);
-        aesKeyBytes = elgamal.doFinal(encryptedKey);
-
-        System.out.println("[DEBUG] Unwrapped AES key (length): " + aesKeyBytes.length);
+        aesKeyBytes = elgamal.doFinal(encryptedAESKey);
+        System.out.println("[DEBUG] AES key unwrapped. Length: " + aesKeyBytes.length);
     } catch (Exception e) {
         System.err.println("[ERROR] Failed to unwrap AES key: " + e.getMessage());
         e.printStackTrace();
-        channel.closeChannel();
+        socket.close();
         return;
     }
 
-    // AES/GCM Decryption
+    // === Decrypt video ===
     byte[] decryptedVideo;
     try {
         SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
-        Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
-        aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
-        decryptedVideo = aesCipher.doFinal(ciphertext);
-        System.out.println("[DEBUG] Video decrypted successfully. Bytes: " + decryptedVideo.length);
+        cipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
+        decryptedVideo = cipher.doFinal(encryptedVideo);
+        System.out.println("[DEBUG] Video decrypted successfully. Size: " + decryptedVideo.length);
     } catch (Exception e) {
-        System.err.println("[ERROR] AES/GCM decryption failed: " + e.getMessage());
+        System.err.println("[ERROR] AES decryption failed: " + e.getMessage());
         e.printStackTrace();
-        channel.closeChannel();
+        socket.close();
         return;
     }
 
-    // Prompt user for folder location
-    String folderPath = console.readLine("[INPUT] Enter a folder path to save the video (e.g., C:\\Users\\erinm\\Downloads): ");
+    // === Ask user for save location ===
+    String folderPath = console.readLine("[INPUT] Enter folder path to save video (e.g., C:\\Users\\YourName\\Downloads): ");
     if (folderPath == null || folderPath.trim().isEmpty()) {
-        System.out.println("[WARN] No folder path entered. Using current directory.");
+        System.out.println("[WARN] No folder path provided. Using current directory.");
         folderPath = ".";
     }
 
-    // Ensure folder exists
     Files.createDirectories(Paths.get(folderPath));
 
-    // Ask for video file name
-    String filenameInput = console.readLine("[INPUT] Enter a name for the saved video (without .mp4): ");
-    if (filenameInput == null || filenameInput.trim().isEmpty()) {
-        filenameInput = "downloaded_video";
-    }
-    if (!filenameInput.toLowerCase().endsWith(".mp4")) {
-        filenameInput += ".mp4";
-    }
-
-    String fullPath = Paths.get(folderPath, filenameInput).toString();
-    Files.write(Paths.get(fullPath), decryptedVideo);
+    String outputName = videoname.toLowerCase().endsWith(".mp4") ? videoname : videoname + ".mp4";
+    Path fullPath = Paths.get(folderPath, outputName);
+    Files.write(fullPath, decryptedVideo);
 
     System.out.println("\n=== Download Complete ===");
-    System.out.println("Saved Location : " + fullPath);
-    System.out.println("=========================");
+    System.out.println("Video Name     : " + videoname);
+    System.out.println("Category       : " + category);
+    System.out.println("Age Rating     : " + agerating);
+    System.out.println("Saved Location : " + fullPath.toAbsolutePath());
+    System.out.println("=========================\n");
 
-    channel.closeChannel();
+    socket.close();
 }
 
 

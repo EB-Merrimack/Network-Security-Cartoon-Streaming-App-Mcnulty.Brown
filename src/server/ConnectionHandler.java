@@ -1,6 +1,7 @@
 
 package server;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -8,24 +9,18 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Base64.Decoder;
 
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import server.Configuration;
 import server.Admin.Admin;
-import server.Admin.AdminAuthenticator;
 import server.Admin.AdminAuthenticator;
 import server.Admin.AdminVerifier;
 import server.Video.Video;
@@ -41,36 +36,23 @@ import common.protocol.messages.AdminAuth;
 import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.DownloadRequestMessage;
-import common.protocol.messages.DownloadResponseMessage;
 import common.protocol.messages.PubKeyRequest;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
-import common.protocol.user_auth.User;
 import common.protocol.user_auth.UserDatabase;
 import merrimackutil.util.NonceCache;
 
-
 public class ConnectionHandler implements Runnable {
 
-    private ProtocolChannel channel;
-    private NonceCache nonceCache;
-    private boolean doDebug = false;
-    private String serviceName;
-    private String secret;
-    private byte[] sessionKey;
+private final Socket sock;
+    private final ProtocolChannel channel;
+    private final NonceCache nonceCache;
+    private final boolean doDebug;
+    private final String serviceName;
+    private final String secret;
 
-    /**
-     * Constructs a new connection handler for the given connection.
-     * @param sock the socket to communicate over.
-     * @param doDebug if tracing should be turned on or not.
-     * @param serviceName the name of the service.
-     * @param secret the secret.
-     * @param nonceCache the nonce cache of the daemon.
-     * @throws IllegalArgumentException the socket is invalid.
-     * @throws IOException we can't read or write from the channel.
-     */
-    public ConnectionHandler(Socket sock, boolean doDebug, String serviceName, String secret, NonceCache nonceCache) throws IllegalArgumentException, IOException
-    {
+    public ConnectionHandler(Socket sock, boolean doDebug, String serviceName, String secret, NonceCache nonceCache) throws IllegalArgumentException, IOException {
+        this.sock = sock;
         this.channel = new ProtocolChannel(sock);
         this.channel.addMessageType(new common.protocol.user_creation.UserCreationRequest());
         this.channel.addMessageType(new common.protocol.messages.StatusMessage());
@@ -81,108 +63,85 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.messages.PubKeyRequest());
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new AdminAuth());
-       
-  
-      
-        this.doDebug = doDebug;
 
+        this.doDebug = doDebug;
         this.nonceCache = nonceCache;
         this.serviceName = serviceName;
         this.secret = secret;
     }
 
-    /**
-     * Handles the Bulitin service connection.
-     */
     @Override
     public void run() {
-
         runCommunication();
         channel.closeChannel();
-      }
+    }
 
-      /**
-       * Run the communication between the service and the client after the handshake.
-       */
-      private void runCommunication() {
+    private void runCommunication() {
         try {
             while (true) {
                 System.out.println("[DEBUG] Waiting to receive a message...");
-                
-                Message msg = null;
-    
-                try {
-                    // Try to receive the message
-                    msg = channel.receiveMessage();
-                    System.out.println("[DEBUG] Received message of type: " + msg.getType());
-                } catch (NullPointerException e) {
-                    // If a NullPointerException occurs, log it and continue waiting for the next message
-                    System.err.println("[ERROR] NullPointerException encountered while receiving message.");
-                    System.err.println("[DEBUG] Received message: " + msg);
-                    // You can decide whether to break out of the loop or continue waiting
-                    continue; // Continue waiting for the next message
+
+                Message msg = channel.receiveMessage();
+                if (msg == null) {
+                    System.out.println("[DEBUG] Received null message, continuing.");
+                    continue;
                 }
-                System.out.println("[DEBUG] Received message: " + msg);
-            if (msg.getType().equals("create-account")) {
-                System.out.println("[SERVER] Received CreateMessage.");
-                // Handle CreateMessage 
-                handleCreateMessage(msg);
-                return;
-            } else if (msg.getType().equals("authenticate")) {
-            boolean success = AuthenticationHandler.authenticate((AuthenticateMessage) msg);
+                System.out.println("[DEBUG] Received message of type: " + msg.getType());
 
-            if (success) {
-                channel.sendMessage(new StatusMessage(true, "Authentication successful."));
-            } else {
-                channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
+                switch (msg.getType()) {
+                    case "create-account":
+                        handleCreateMessage(msg);
+                        return;
+                    case "authenticate":
+                        boolean success = AuthenticationHandler.authenticate((AuthenticateMessage) msg);
+                        channel.sendMessage(new StatusMessage(success, success ? "Authentication successful." : "Authentication failed. Check your password or OTP."));
+                        return;
+                    case "AdminAuth":
+                        boolean adminSuccess = AdminAuthenticator.authenticate((AdminAuth) msg);
+                        channel.sendMessage(new StatusMessage(adminSuccess, adminSuccess ? "Authentication successful." : "Authentication failed. Check your password or OTP."));
+                        if (!adminSuccess) return;
+                        break;
+                    case "PubKeyRequest":
+                        PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
+                        String username = pubKeyRequest.getUser();
+                        String base64Key = UserDatabase.getEncodedPublicKey(username);
+                        channel.sendMessage(new StatusMessage(true, base64Key));
+                        break;
+                    case "AdminInsertVideoRequest":
+                        handleAdminInsertVideoRequest(msg);
+                        return;
+                    case "DownloadRequest":
+                        System.out.println("[SERVER] Switching to raw download mode.");
+                        handleRawDownload(sock);
+                        return;
+                    default:
+                        channel.sendMessage(new StatusMessage(false, "Unsupported message type."));
+                }
             }
-            return;
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-        else if (msg.getType().equals("AdminAuth")) {
-            System.out.println("[SERVER] Received AdminAuth.");
-            boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
-
-            if (success) {
-                channel.sendMessage(new StatusMessage(true, "Authentication successful."));
-                continue; // Continue waiting for the next message
-            } else {
-                channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
-                return;
-            }
-            
-        }else if (msg.getType().equals("PubKeyRequest")) {
-            System.out.println("[SERVER] Received PubKeyRequest.");
-        
-            PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
-            String username = pubKeyRequest.getUser();  // Use getUser() here
-            System.out.println("[SERVER] Public key requested for user: " + username);
-        
-            String base64Key = UserDatabase.getEncodedPublicKey(username) ;  // You might want to change this to take a username
-            System.out.println("[SERVER] Sending public key (Base64): " + base64Key);
-        
-            channel.sendMessage((Message) new StatusMessage(true, base64Key));
-            System.out.println("[SERVER] Public key sent.");
-        }
-        else if (msg.getType().equals("AdminInsertVideoRequest")) {
-            System.out.println("[SERVER] Received AdminInsertVideoRequest.");
-            // Handle AdminInsertVideoRequest
-            handleAdminInsertVideoRequest(msg);
-            return;
-        } else if (msg.getType().equals("DownloadRequest")) {
-            System.out.println("[SERVER] Received DownloadRequest.");
-            handleDownloadRequest((DownloadRequestMessage) msg);
-            continue; // Continue waiting for the next message
-        }
-         else {
-            System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
-        }
-
     }
-}catch (Exception ex) {
-        ex.printStackTrace();
-    }
-}
 
+    private void handleRawDownload(Socket sock) {
+        try {
+            DataInputStream in = new DataInputStream(sock.getInputStream());
+            DataOutputStream out = new DataOutputStream(sock.getOutputStream());
+
+            String username = in.readUTF();
+            String filename = in.readUTF();
+            int keyLen = in.readInt();
+            byte[] privKeyBytes = new byte[keyLen];
+            in.readFully(privKeyBytes);
+
+            DownloadRequestMessage msg = new DownloadRequestMessage(filename, username, privKeyBytes);
+            handleDownloadRequest(msg);
+        } catch (Exception e) {
+            System.err.println("[SERVER ERROR - RAW DOWNLOAD] " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
             
        
 
