@@ -6,15 +6,21 @@ import java.io.InvalidObjectException;
 
 public class DownloadRequestMessage implements Message {
     private String filename;
+    private String username; // NEW FIELD
 
     public DownloadRequestMessage() {}
 
-    public DownloadRequestMessage(String filename) {
+    public DownloadRequestMessage(String filename, String username) {
         this.filename = filename;
+        this.username = username;
     }
 
     public String getFilename() {
         return filename;
+    }
+
+    public String getUsername() {
+        return username;
     }
 
     @Override
@@ -24,6 +30,7 @@ public class DownloadRequestMessage implements Message {
         }
         JSONObject json = (JSONObject) obj;
         this.filename = json.getString("filename");
+        this.username = json.getString("username"); // NEW
     }
 
     @Override
@@ -31,6 +38,7 @@ public class DownloadRequestMessage implements Message {
         JSONObject obj = new JSONObject();
         obj.put("type", "DownloadRequest");
         obj.put("filename", filename);
+        obj.put("username", username); // NEW
         return obj;
     }
 
@@ -48,6 +56,6 @@ public class DownloadRequestMessage implements Message {
 
     @Override
     public String toString() {
-        return "[DownloadRequestMessage] filename=" + filename;
+        return "[DownloadRequestMessage] filename=" + filename + ", username=" + username;
     }
 }

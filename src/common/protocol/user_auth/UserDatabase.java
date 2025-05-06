@@ -9,6 +9,8 @@ import java.io.InvalidObjectException;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.swing.Spring;
+
 public class UserDatabase {
     private static Map<String, User> userMap = new HashMap<>();
 
@@ -163,6 +165,21 @@ public class UserDatabase {
          */
     public static String getPubkey(String username) {
         return userMap.get(username).getPubkey();
+    }
+
+/*************  ✨ Windsurf Command ⭐  *************/
+/**
+ * Retrieves the AES initialization vector (IV) associated with the given username.
+ *
+ * @param username the username of the User to retrieve the AES IV for
+ * @return the AES IV associated with the given username, or null if no such user exists
+ */
+
+/*******  78940fc4-db82-4c6d-90c4-e8adb524eefc  *******/    public static String getAesIV(String username) {
+        return userMap.get(username).getAesIV();
+    }
+    public static String getAesKey(String username) {
+        return userMap.get(username).getEncryptedAESKey();
     }
 
     // Check method to verify if the username exists in the database

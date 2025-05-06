@@ -98,36 +98,48 @@ public class Admin implements JSONSerializable {
             default:
                 throw new IllegalArgumentException("Invalid key: " + key);
         }
-
     }
-
-  
 
     // Static method to check if user is admin
     public static boolean isAdmin(String username) {
         Admin admin = getInstance();
         return admin != null && admin.getUser().equals(username);
     }
-// Static method to load the Admin singleton
-public static Admin getInstance() {
-    if (instance == null) {
-        try {
-            File adminFile = new File(server.Configuration.getAdminFile());
-            JSONObject entry = (JSONObject) JsonIO.readObject(adminFile);
 
-            instance = new Admin(
-                entry.getString("salt"),
-                entry.getString("pass"),
-                entry.getString("totp-key"),
-                entry.getString("user"),
-                entry.getString("pubkey"),
-                entry.getString("encryptedAESKey"),
-                entry.getString("aesIV")
-            );
-        } catch (Exception e) {
-            System.err.println("[Admin] Error loading admin.json: " + e.getMessage());
+    // Static method to load the Admin singleton
+    public static Admin getInstance() {
+        if (instance == null) {
+            try {
+                File adminFile = new File(server.Configuration.getAdminFile());
+                System.out.println("[DEBUG] Admin file path: " + adminFile.getAbsolutePath());
+                
+                // Check if the file exists
+                if (!adminFile.exists()) {
+                    System.err.println("[Admin] Error: Admin file does not exist.");
+                    return null;
+                }
+
+                JSONObject entry = (JSONObject) JsonIO.readObject(adminFile);
+                System.out.println("[DEBUG] Loaded admin.json: " + entry.toString());
+
+             
+
+                // Create Admin instance
+                instance = new Admin(
+                    entry.getString("salt"),
+                    entry.getString("pass"),
+                    entry.getString("totp-key"),
+                    entry.getString("user"),
+                    entry.getString("pubkey"),
+                    entry.getString("encryptedAESKey"),
+                    entry.getString("aesIV")
+                );
+                System.out.println("[DEBUG] Admin instance loaded successfully.");
+            } catch (Exception e) {
+                System.err.println("[Admin] Error loading admin.json: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
+        return instance;
     }
-    return instance;
-}
 }

@@ -1,20 +1,40 @@
 package common.protocol.messages;
 
-import merrimackutil.json.types.*;
-import common.protocol.Message;
 import java.io.InvalidObjectException;
 
+import common.protocol.Message;
+import merrimackutil.json.types.JSONObject;
+import merrimackutil.json.types.JSONType;
+
 public class SearchRequestMessage implements Message {
-    private String query;
+    private String encryptedPath;
+    private String videoCategory;
+    private String videoName;
+    private String videoAgeRating;
 
     public SearchRequestMessage() {}
 
-    public SearchRequestMessage(String query) {
-        this.query = query;
+    public SearchRequestMessage(String encryptedPath, String videoCategory, String videoName, String videoAgeRating) {
+        this.encryptedPath = encryptedPath;
+        this.videoCategory = videoCategory;
+        this.videoName = videoName;
+        this.videoAgeRating = videoAgeRating;
     }
 
-    public String getQuery() {
-        return query;
+    public String getEncryptedPath() {
+        return encryptedPath;
+    }
+
+    public String getVideoCategory() {
+        return videoCategory;
+    }
+
+    public String getVideoName() {
+        return videoName;
+    }
+
+    public String getVideoAgeRating() {
+        return videoAgeRating;
     }
 
     @Override
@@ -23,14 +43,20 @@ public class SearchRequestMessage implements Message {
             throw new InvalidObjectException("Expected JSONObject");
         }
         JSONObject json = (JSONObject) obj;
-        this.query = json.getString("query");
+        this.encryptedPath = json.getString("encryptedPath");
+        this.videoCategory = json.getString("videoCategory");
+        this.videoName = json.getString("videoName");
+        this.videoAgeRating = json.getString("videoAgeRating");
     }
 
     @Override
     public JSONType toJSONType() {
         JSONObject obj = new JSONObject();
         obj.put("type", "SearchRequest");
-        obj.put("query", query);
+        obj.put("encryptedPath", encryptedPath);
+        obj.put("videoCategory", videoCategory);
+        obj.put("videoName", videoName);
+        obj.put("videoAgeRating", videoAgeRating);
         return obj;
     }
 
@@ -48,6 +74,29 @@ public class SearchRequestMessage implements Message {
 
     @Override
     public String toString() {
-        return "[SearchRequestMessage] query=" + query;
+        return "[SearchRequestMessage] EncryptedPath=" + encryptedPath +
+               ", VideoCategory=" + videoCategory +
+               ", VideoName=" + videoName +
+               ", VideoAgeRating=" + videoAgeRating;
+    }
+
+    public void setEncryptedPath(String encryptedPath2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setEncryptedPath'");
+    }
+
+    public void setVideoCategory(String videoCategory2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setVideoCategory'");
+    }
+
+    public void setVideoName(String videoName2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setVideoName'");
+    }
+
+    public void setVideoAgeRating(String videoAgeRating2) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setVideoAgeRating'");
     }
 }

@@ -23,7 +23,7 @@ import org.bouncycastle.util.Objects;
 import common.protocol.Message;
 import common.protocol.ProtocolChannel;
 import common.protocol.messages.*;
-
+import common.protocol.user_auth.UserDatabase;
 import common.protocol.user_creation.UserCreationRequest;
 import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
@@ -43,12 +43,18 @@ public class Client {
     private static String downloadFilename;
     private static final Objects mapper = new Objects();
 
+    private static final Scanner scanner = new Scanner(System.in);
+
+    private static long lastAuthTime = 0;
+private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+
+
     // Print usage/help
     public static void usage() {
         System.out.println("usage:");
         System.out.println("  client --create --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --search <query> --user <user> --host <host> --port <portnum>");
-        System.out.println("  client --download <filename> --user <user> --host <host> --port <portnum>");
+        System.out.println("  client --login --user <user> --host <host> --port <portnum>");
         System.out.println("options:");
         System.out.println("  -c, --create     Create a new account.");
         System.out.println("  -u, --user       Username.");
@@ -104,117 +110,184 @@ public class Client {
         if (console == null) {
             throw new IllegalStateException("Console is not available. Please run in a real terminal.");
         }
-
+    
         char[] passwordChars = console.readPassword("Enter password: ");
         String password = new String(passwordChars);
-
+    
         String otp = console.readLine("Enter OTP: ");
-
+    
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
-
+    
         channel = new ProtocolChannel(socket);
         channel.addMessageType(new StatusMessage());
         channel.addMessageType(new AuthenticateMessage());
-
+    
         AuthenticateMessage authMsg = new AuthenticateMessage(user, password, otp);
         channel.sendMessage(authMsg);
-
+    
         Message response = channel.receiveMessage();
         if (!(response instanceof StatusMessage)) {
             System.out.println("[ERROR] Unexpected response: " + response.getClass().getName());
             return false;
         }
-
+    
         StatusMessage status = (StatusMessage) response;
+        if (status.getStatus()) {
+            lastAuthTime = System.currentTimeMillis(); // <<< SET after successful login
+        }
         return status.getStatus();
     }
-
-    // Search available videos
-    public static void search(String query) throws Exception {
-        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-        socket.startHandshake();
-
-        ProtocolChannel channel = new ProtocolChannel(socket);
-        channel.addMessageType(new SearchRequestMessage());
-        channel.addMessageType(new SearchResponseMessage());
-        channel.addMessageType(new StatusMessage());
-
-        SearchRequestMessage searchMsg = new SearchRequestMessage(query);
-        channel.sendMessage(searchMsg);
-
-        Message response = channel.receiveMessage();
-        if (response instanceof SearchResponseMessage) {
-            List<String> files = ((SearchResponseMessage) response).getFiles();
-            if (files.isEmpty()) {
-                System.out.println("No matching content found.");
-            } else {
-                System.out.println("Search results:");
-                for (String file : files) {
-                    System.out.println(" - " + file);
-                }
+    private static void checkAuthentication() throws Exception {
+        if (System.currentTimeMillis() - lastAuthTime > AUTH_TIMEOUT_MS) {
+            System.out.println("[INFO] Session expired. Re-authentication required.");
+            if (!authenticateUser()) {
+                System.out.println("[ERROR] Re-authentication failed. Exiting.");
+                System.exit(1);
             }
-        } else if (response instanceof StatusMessage) {
-            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
-        } else {
-            System.out.println("[ERROR] Unexpected response: " + response);
         }
-
-        channel.closeChannel();
     }
+    
+    
+   // Search available videos
+public static void search(String encryptedPath, String videoCategory, String videoName, String videoAgeRating) throws Exception {
+    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+    socket.startHandshake();
+
+    ProtocolChannel channel = new ProtocolChannel(socket);
+    channel.addMessageType(new SearchRequestMessage());
+    channel.addMessageType(new SearchResponseMessage());
+    channel.addMessageType(new StatusMessage());
+
+    SearchRequestMessage searchMsg = new SearchRequestMessage();
+    
+    // You need to set the fields into searchMsg (assuming your SearchRequestMessage supports it)
+    searchMsg.setEncryptedPath(encryptedPath);
+    searchMsg.setVideoCategory(videoCategory);
+    searchMsg.setVideoName(videoName);
+    searchMsg.setVideoAgeRating(videoAgeRating);
+
+    channel.sendMessage(searchMsg);
+
+    Message response = channel.receiveMessage();
+    if (response instanceof SearchResponseMessage) {
+        List<String> files = ((SearchResponseMessage) response).getFiles();
+        if (files.isEmpty()) {
+            System.out.println("No matching content found.");
+        } else {
+            System.out.println("Search results:");
+            for (String file : files) {
+                System.out.println(" - " + file);
+            }
+        }
+    } else if (response instanceof StatusMessage) {
+        System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+    } else {
+        System.out.println("[ERROR] Unexpected response: " + response);
+    }
+
+    channel.closeChannel();
+}
+
 
     // Download file
     public static void download(String filename) throws Exception {
+        System.out.println("[INFO] Downloading video..."+filename);
+        // 1. Open SSL socket
         SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
         SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
         socket.startHandshake();
-
+    
+        // 2. Setup channel and message types
         ProtocolChannel channel = new ProtocolChannel(socket);
         channel.addMessageType(new DownloadRequestMessage());
-        channel.addMessageType(new FileChunkMessage());
-        channel.addMessageType(new DownloadCompleteMessage());
+        channel.addMessageType(new DownloadResponseMessage());
         channel.addMessageType(new StatusMessage());
-
-        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename);
+    
+        // 3. Send request
+        System.out.println("[INFO] Sending download request...");
+        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user);
         channel.sendMessage(downloadMsg);
+    
+        // 4. Receive server response
+        Message response = channel.receiveMessage();
+    
+        if (response instanceof DownloadResponseMessage) {
+            DownloadResponseMessage drm = (DownloadResponseMessage) response;
+    
+            System.out.println("[INFO] Received encrypted video.");
+    
+             // Extract fields based on expected JSON structure
+    String encryptedVideoB64 = drm.getEncryptedVideo(); // assumes getter
+    String videoCategory = drm.getVideocatagory();
+    String videoName = drm.getVideoname();
+    String videoAgeRating = drm.getVideoagerating();
 
-        java.io.FileOutputStream fileOut = new java.io.FileOutputStream(filename);
+    // 5. Decode base64 fields
+    byte[] encryptedKey = Base64.getDecoder().decode(UserDatabase.getAesKey(user));
+    byte[] iv = Base64.getDecoder().decode(UserDatabase.getAesIV(user));
+    byte[] ciphertext = Base64.getDecoder().decode(encryptedVideoB64);
 
-        boolean finished = false;
-        int totalBytes = 0;
-
-        while (!finished) {
-            Message response = channel.receiveMessage();
-
-            if (response instanceof FileChunkMessage) {
-                FileChunkMessage chunk = (FileChunkMessage) response;
-                fileOut.write(chunk.getData());
-                totalBytes += chunk.getData().length;
-                if (chunk.isLastChunk()) {
-                    finished = true;
-                }
-            } else if (response instanceof DownloadCompleteMessage) {
-                finished = true;
-            } else if (response instanceof StatusMessage) {
-                System.out.println("[ERROR] Server reported: " + ((StatusMessage) response).getPayload());
-                break;
-            } else {
-                System.out.println("[ERROR] Unexpected response: " + response);
-                break;
-            }
-        }
-
-        fileOut.close();
-        channel.closeChannel();
-        System.out.println("Download finished: " + filename + " (" + totalBytes + " bytes)");
+    
+          /*  // 6. Decrypt AES key using private key
+            Console console = System.console();
+            if (console == null) throw new IllegalStateException("Console not available.");
+            String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
+            byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
+    
+            java.security.spec.PKCS8EncodedKeySpec keySpec = new java.security.spec.PKCS8EncodedKeySpec(privKeyBytes);
+            java.security.KeyFactory keyFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
+            java.security.PrivateKey privKey = keyFactory.generatePrivate(keySpec);
+    
+            Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
+            elgamal.init(Cipher.DECRYPT_MODE, privKey);
+            byte[] aesKeyBytes = elgamal.doFinal(encryptedKey);*/ 
+    
+            // 7. Decrypt video with AES/GCM
+            SecretKey aesKey = new javax.crypto.spec.SecretKeySpec(encryptedKey, "AES");
+            Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+            aesCipher.init(Cipher.DECRYPT_MODE, aesKey, gcmSpec);
+    
+            byte[] decryptedVideo = aesCipher.doFinal(ciphertext);
+    
+            // 8. Prompt user where to save
+    Console console = System.console();
+    if (console == null) throw new IllegalStateException("Console not available.");
+    
+    String savePath = console.readLine("[INPUT] Enter the full path where you want to save the video (without .mp4): ");
+    if (savePath == null || savePath.trim().isEmpty()) {
+        savePath = "decrypted_" + drm.getVideoname();  // fallback default
     }
+    
+    // Remove any existing .mp4 if the user typed it accidentally
+    if (savePath.toLowerCase().endsWith(".mp4")) {
+        savePath = savePath.substring(0, savePath.length() - 4);
+    }
+    
+    savePath += ".mp4"; // Always ensure it ends with .mp4
 
+    java.nio.file.Files.write(java.nio.file.Paths.get(savePath), decryptedVideo);
+   // ✅ Now output the user-friendly download message:
+     System.out.println("\n=== Download Complete ===");
+     System.out.println("Video Name     : " + videoName);
+     System.out.println("Category       : " + videoCategory);
+     System.out.println("Age Rating     : " + videoAgeRating);
+     System.out.println("Saved Location : " + savePath);
+     System.out.println("=========================\n");
+ 
+} else if (response instanceof StatusMessage) {
+    System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+} else {
+    System.out.println("[ERROR] Unexpected response type: " + response.getClass().getName());
+}
+
+channel.closeChannel();
+}
     // Create post login panel
     public static void interactiveSession() throws Exception {
-        Scanner scanner = new Scanner(System.in);
-    
         while (true) {
             System.out.println();
             System.out.println("Welcome, " + user + "! What would you like to do?");
@@ -227,34 +300,62 @@ public class Client {
     
             switch (choice) {
                 case "1":
-                    System.out.print("Enter search query: ");
-                    String query = scanner.nextLine().trim();
-                    if (!query.isEmpty()) {
-                        search(query);
-                    } else {
-                        System.out.println("[WARN] Search query cannot be empty.");
-                    }
+                checkAuthentication(); // <<< check if session timed out
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
+                
+                // Ask for Encrypted Path
+                clearConsole();
+                System.out.print("Encrypted Path: ");
+                String encryptedPath = scanner.nextLine().trim();
+                if (encryptedPath.isEmpty()) encryptedPath = "null";
+                
+                // Ask for Video Category
+                clearConsole();
+                System.out.print("Video Category: ");
+                String videoCategory = scanner.nextLine().trim();
+                if (videoCategory.isEmpty()) videoCategory = "null";
+                
+                // Ask for Video Name
+                clearConsole();
+                System.out.print("Video Name: ");
+                String videoName = scanner.nextLine().trim();
+                if (videoName.isEmpty()) videoName = "null";
+                
+                // Ask for Video Age Rating
+                clearConsole();
+                System.out.print("Video Age Rating: ");
+                String videoAgeRating = scanner.nextLine().trim();
+                if (videoAgeRating.isEmpty()) videoAgeRating = "null";
+                
+                // After collecting all inputs, you can now perform the search
+                search(encryptedPath, videoCategory, videoName, videoAgeRating);
+                
                     break;
                 case "2":
+                    checkAuthentication(); // <<< add this
+                    Scanner downloadscanner=new Scanner(System.in);
                     System.out.print("Enter filename to download: ");
-                    String filename = scanner.nextLine().trim();
-                    if (!filename.isEmpty()) {
-                        download(filename);
+                    String searchFilename = downloadscanner.nextLine().trim();
+                    if (!searchFilename.isEmpty()) {
+                        download(searchFilename);
                     } else {
                         System.out.println("[WARN] Filename cannot be empty.");
                     }
+                
                     break;
+    
                 case "3":
                     System.out.println("Goodbye, " + user + "!");
                     System.exit(0);
                     break;
+    
                 default:
                     System.out.println("[ERROR] Invalid option. Please choose 1, 2, or 3.");
                     break;
             }
         }
     }
-
+    
     // Main entry point
     public static void main(String[] args) throws Exception {
         // Setup TLS and Bouncy Castle
@@ -355,4 +456,17 @@ public class Client {
             }
         }
     }
+    public static void clearConsole() {
+        try {
+            if (System.getProperty("os.name").contains("Windows")) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                System.out.print("\033[H\033[2J");
+                System.out.flush();
+            }
+        } catch (Exception e) {
+            System.out.println("Could not clear console.");
+        }
+    }
+    
 }

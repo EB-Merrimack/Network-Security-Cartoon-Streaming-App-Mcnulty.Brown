@@ -39,11 +39,7 @@ public class Protector {
         byte[] fileData = Files.readAllBytes(inputFile.toPath());
         byte[] encryptedContent = CryptoUtils.encrypt(fileData, aesKey, aesIV);
 
-        // Combine IV + encrypted content
-        byte[] outputData = new byte[aesIV.length + encryptedContent.length];
-        System.arraycopy(aesIV, 0, outputData, 0, aesIV.length);
-        System.arraycopy(encryptedContent, 0, outputData, aesIV.length, encryptedContent.length);
-
+   
         // Use configured video folder
         Path videoDir = Paths.get(Configuration.getVideofolder());
         if (!Files.exists(videoDir)) {
@@ -53,7 +49,7 @@ public class Protector {
         // Save the encrypted file with .enc extension
         String outputFileName = inputFile.getName() + ".enc";
         Path outputPath = videoDir.resolve(outputFileName);
-        Files.write(outputPath, outputData);
+        Files.write(outputPath, encryptedContent);
 
         System.out.println("Encrypted content (IV + ciphertext) saved to: " + outputPath.toAbsolutePath());
         return outputPath;
