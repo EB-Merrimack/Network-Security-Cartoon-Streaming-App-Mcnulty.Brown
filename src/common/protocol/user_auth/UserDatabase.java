@@ -167,7 +167,7 @@ public class UserDatabase {
         return userMap.get(username).getPubkey();
     }
 
-/*************  ✨ Windsurf Command ⭐  *************/
+
 /**
  * Retrieves the AES initialization vector (IV) associated with the given username.
  *
@@ -175,7 +175,7 @@ public class UserDatabase {
  * @return the AES IV associated with the given username, or null if no such user exists
  */
 
-/*******  78940fc4-db82-4c6d-90c4-e8adb524eefc  *******/    public static String getAesIV(String username) {
+    public static String getAesIV(String username) {
         return userMap.get(username).getAesIV();
     }
     public static String getAesKey(String username) {

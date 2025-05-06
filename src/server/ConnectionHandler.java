@@ -37,6 +37,7 @@ import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.DownloadRequestMessage;
 import common.protocol.messages.DownloadResponseMessage;
+import common.protocol.messages.PubKeyRequest;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.User;
@@ -72,6 +73,7 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.messages.DownloadRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchResponseMessage());
+        this.channel.addMessageType(new common.protocol.messages.PubKeyRequest());
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new AdminAuth());
        
@@ -143,6 +145,18 @@ public class ConnectionHandler implements Runnable {
                 return;
             }
             
+        }else if (msg.getType().equals("PubKeyRequest")) {
+            System.out.println("[SERVER] Received PubKeyRequest.");
+        
+            PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
+            String username = pubKeyRequest.getUser();  // Use getUser() here
+            System.out.println("[SERVER] Public key requested for user: " + username);
+        
+            String base64Key = UserDatabase.getEncodedPublicKey(username) ;  // You might want to change this to take a username
+            System.out.println("[SERVER] Sending public key (Base64): " + base64Key);
+        
+            channel.sendMessage((Message) new StatusMessage(true, base64Key));
+            System.out.println("[SERVER] Public key sent.");
         }
         else if (msg.getType().equals("AdminInsertVideoRequest")) {
             System.out.println("[SERVER] Received AdminInsertVideoRequest.");
