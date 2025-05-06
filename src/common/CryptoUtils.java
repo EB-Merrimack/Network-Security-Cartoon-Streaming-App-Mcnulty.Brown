@@ -4,7 +4,6 @@ import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.crypto.params.ElGamalPublicKeyParameters;
-import org.bouncycastle.crypto.params.ElGamalKeyParameters;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.security.PublicKey;
@@ -12,95 +11,124 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.KeyFactory;
 import java.security.spec.X509EncodedKeySpec;
-
 import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.AEADBadTagException;
+import javax.crypto.SecretKey;
+import javax.crypto.Cipher;
+
+import java.util.Arrays;
 
 public class CryptoUtils {
 
     static {
-        // Register BouncyCastle as the security provider
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    private static final int IV_SIZE = 12; // Standard IV size for AES-GCM
+    private static final int IV_SIZE = 12; // 96 bits, standard for GCM
     private static final String AES_TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int GCM_TAG_LENGTH_BITS = 128;
+    private static final int GCM_TAG_LENGTH_BITS = 128; // 16 bytes
+    private static final int DEBUG_MAX_BYTES = 128; // Max bytes shown in debug output
 
-    /**
-     * Decodes an ElGamal public key from a byte array.
-     */
-    public static PublicKey decodeElGamalPublicKey(byte[] decode) throws Exception {
-        try {
-            // ElGamal public key decoding
-            ASN1InputStream asn1InputStream = new ASN1InputStream(decode);
+    // Decode an ElGamal public key from raw ASN.1 bytes
+    public static PublicKey decodeElGamalPublicKey(byte[] encoded) throws Exception {
+        try (ASN1InputStream asn1InputStream = new ASN1InputStream(encoded)) {
             ASN1Sequence sequence = (ASN1Sequence) asn1InputStream.readObject();
-            asn1InputStream.close();
+            ASN1Integer p = (ASN1Integer) sequence.getObjectAt(0);
+            ASN1Integer g = (ASN1Integer) sequence.getObjectAt(1);
+            ASN1Integer y = (ASN1Integer) sequence.getObjectAt(2);
 
-            // Extract the components of the ElGamal public key: p, g, y
-            ASN1Integer p = (ASN1Integer) sequence.getObjectAt(0); // Prime modulus
-            ASN1Integer g = (ASN1Integer) sequence.getObjectAt(1); // Generator
-            ASN1Integer y = (ASN1Integer) sequence.getObjectAt(2); // Public key element
+            // (not used directly here, but parsed to validate structure)
+            p.getValue();
+            g.getValue();
+            y.getValue();
 
-            // Now you can use these values to construct the ElGamal public key parameters
-            byte[] pBytes = p.getEncoded();
-            byte[] gBytes = g.getEncoded();
-            byte[] yBytes = y.getEncoded();
-
-            // You could use these parameters to generate an ElGamal public key, but typically, you
-            // would wrap them in an appropriate class such as ElGamalPublicKeyParameters for cryptographic operations.
-            
-            // Returning a KeyFactory-based public key (simplified)
-            KeyFactory keyFactory = KeyFactory.getInstance("ElGamal");
-            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decode);
+            KeyFactory keyFactory = KeyFactory.getInstance("ElGamal", "BC");
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(encoded);
             return keyFactory.generatePublic(keySpec);
-
         } catch (Exception e) {
             throw new Exception("Error decoding ElGamal public key: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Encrypts data using AES-GCM and returns IV + ciphertext.
-     */
-    public static byte[] encrypt(byte[] data, javax.crypto.SecretKey key) throws Exception {
+    // Encrypt data using AES-GCM
+    public static byte[] encrypt(byte[] data, SecretKey key) throws Exception {
         byte[] iv = generateIV();
-        javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance(AES_TRANSFORMATION);
+        Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION, "BC");
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
-        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key, spec);
-        
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+
+        System.out.println("[DEBUG] Encrypting...");
+        debugBytes("Plaintext", data);
+        debugBytes("IV", iv);
+
         byte[] encryptedData = cipher.doFinal(data);
-        
-        // Combine IV + encrypted data (which includes the tag)
+
+        System.out.println("[DEBUG] Encrypted (ciphertext + tag): total " + encryptedData.length + " bytes");
+
         byte[] result = new byte[iv.length + encryptedData.length];
         System.arraycopy(iv, 0, result, 0, iv.length);
         System.arraycopy(encryptedData, 0, result, iv.length, encryptedData.length);
-        
+
         return result;
     }
 
-    /**
-     * Decrypts data using AES-GCM and returns the original plaintext.
-     */
-    public static byte[] decrypt(byte[] encryptedData, javax.crypto.SecretKey key) throws Exception {
-        byte[] iv = new byte[IV_SIZE];
-        System.arraycopy(encryptedData, 0, iv, 0, IV_SIZE);
-        
-        byte[] ciphertext = new byte[encryptedData.length - IV_SIZE];
-        System.arraycopy(encryptedData, IV_SIZE, ciphertext, 0, ciphertext.length);
-        
-        javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance(AES_TRANSFORMATION);
+    // Decrypt data using AES-GCM
+    public static byte[] decrypt(byte[] encryptedData, SecretKey key) throws Exception {
+        if (encryptedData.length < IV_SIZE + (GCM_TAG_LENGTH_BITS / 8)) {
+            throw new IllegalArgumentException("Encrypted data too short to be valid AES-GCM ciphertext.");
+        }
+
+        System.out.println("[DEBUG] Decrypting...");
+        debugBytes("Encrypted input", encryptedData);
+
+        byte[] iv = Arrays.copyOfRange(encryptedData, 0, IV_SIZE);
+        byte[] ciphertextWithTag = Arrays.copyOfRange(encryptedData, IV_SIZE, encryptedData.length);
+
+        System.out.println("[DEBUG] IV extracted:");
+        debugBytes("IV", iv);
+
+        Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION, "BC");
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
-        cipher.init(javax.crypto.Cipher.DECRYPT_MODE, key, spec);
-        
-        return cipher.doFinal(ciphertext);
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+
+        try {
+            byte[] plaintext = cipher.doFinal(ciphertextWithTag);
+            System.out.println("[DEBUG] Decryption successful.");
+            debugBytes("Plaintext", plaintext);
+            return plaintext;
+        } catch (AEADBadTagException e) {
+            System.err.println("[ERROR] Decryption failed: authentication tag mismatch!");
+            throw new SecurityException("Decryption failed: authentication tag mismatch.", e);
+        } catch (Exception e) {
+            System.err.println("[ERROR] Decryption failed: " + e.getMessage());
+            throw new Exception("Decryption failed unexpectedly: " + e.getMessage(), e);
+        }
     }
 
-    /**
-     * Generates a random IV.
-     */
+    // Generate a random IV
     private static byte[] generateIV() {
         byte[] iv = new byte[IV_SIZE];
         new SecureRandom().nextBytes(iv);
         return iv;
+    }
+
+    // Helper: print limited debug bytes
+    private static void debugBytes(String label, byte[] bytes) {
+        int length = bytes.length;
+        System.out.println("[DEBUG] " + label + ": " + length + " bytes");
+        if (length <= DEBUG_MAX_BYTES) {
+            System.out.println(bytesToHex(bytes));
+        } else {
+            System.out.println(bytesToHex(Arrays.copyOf(bytes, DEBUG_MAX_BYTES)) + "... [truncated]");
+        }
+    }
+
+    // Helper: convert bytes to hex string
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 }

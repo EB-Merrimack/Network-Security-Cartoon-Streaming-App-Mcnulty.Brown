@@ -53,6 +53,24 @@
          "videoCategory" : "dis",
          "videoName" : "don",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
+         "videoCategory" : "null",
+         "videoName" : "dontest",
+         "videoAgeRating" : "null"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
+         "videoCategory" : "disney",
+         "videoName" : "testdon",
+         "videoAgeRating" : "null"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
+         "videoCategory" : "dis",
+         "videoName" : "test3",
+         "videoAgeRating" : "null"
       }
    ]
 }

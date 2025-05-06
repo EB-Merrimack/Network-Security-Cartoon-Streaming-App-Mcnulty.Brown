@@ -289,7 +289,7 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[DEBUG] Encrypted AES Key: " + Admin.getEncryptedAESKey());
                 Admin.getInstance();
                 System.out.println("[DEBUG] Admin instance loaded successfully.");
-                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), Admin.getAesIV(), encFile);
+                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(),  encFile);
         
                 // Get the decrypted file
                 File decryptedFile = new File(encFile.getParentFile(), requestedFile);
