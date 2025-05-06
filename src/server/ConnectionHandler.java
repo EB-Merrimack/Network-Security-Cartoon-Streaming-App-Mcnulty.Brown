@@ -289,7 +289,7 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[DEBUG] Encrypted AES Key: " + Admin.getEncryptedAESKey());
                 Admin.getInstance();
                 System.out.println("[DEBUG] Admin instance loaded successfully.");
-                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(),  encFile);
+                Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(),  encFile, Admin.getAesIV());
         
                 // Get the decrypted file
                 File decryptedFile = new File(encFile.getParentFile(), requestedFile);
@@ -315,7 +315,7 @@ public class ConnectionHandler implements Runnable {
                 rand.nextBytes(iv);
         
                 System.out.println("[DEBUG] Encrypting video with session key...");
-                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey);
+                byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
         
                 // STEP 3: Encrypt AES key with user's ElGamal public key
                 System.out.println("[DEBUG] Retrieving user's public key...");

@@ -3,7 +3,6 @@ package common;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.crypto.params.ElGamalPublicKeyParameters;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.security.PublicKey;
@@ -26,7 +25,7 @@ public class CryptoUtils {
 
     private static final int IV_SIZE = 12; // 96 bits, standard for GCM
     private static final String AES_TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int GCM_TAG_LENGTH_BITS = 128; // 16 bytes
+    private static final int GCM_TAG_LENGTH_BITS = 128; // 16 bytes authentication tag
     private static final int DEBUG_MAX_BYTES = 128; // Max bytes shown in debug output
 
     // Decode an ElGamal public key from raw ASN.1 bytes
@@ -37,7 +36,7 @@ public class CryptoUtils {
             ASN1Integer g = (ASN1Integer) sequence.getObjectAt(1);
             ASN1Integer y = (ASN1Integer) sequence.getObjectAt(2);
 
-            // (not used directly here, but parsed to validate structure)
+            // Validate structure (not used directly)
             p.getValue();
             g.getValue();
             y.getValue();
@@ -51,8 +50,7 @@ public class CryptoUtils {
     }
 
     // Encrypt data using AES-GCM
-    public static byte[] encrypt(byte[] data, SecretKey key) throws Exception {
-        byte[] iv = generateIV();
+    public static byte[] encrypt(byte[] data, SecretKey key, byte[] iv) throws Exception {
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION, "BC");
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
@@ -63,28 +61,18 @@ public class CryptoUtils {
 
         byte[] encryptedData = cipher.doFinal(data);
 
-        System.out.println("[DEBUG] Encrypted (ciphertext + tag): total " + encryptedData.length + " bytes");
-
-        byte[] result = new byte[iv.length + encryptedData.length];
-        System.arraycopy(iv, 0, result, 0, iv.length);
-        System.arraycopy(encryptedData, 0, result, iv.length, encryptedData.length);
-
-        return result;
+        // Return just the ciphertext + tag (no IV included)
+        return encryptedData;
     }
 
     // Decrypt data using AES-GCM
-    public static byte[] decrypt(byte[] encryptedData, SecretKey key) throws Exception {
-        if (encryptedData.length < IV_SIZE + (GCM_TAG_LENGTH_BITS / 8)) {
-            throw new IllegalArgumentException("Encrypted data too short to be valid AES-GCM ciphertext.");
+    public static byte[] decrypt(byte[] encryptedData, SecretKey key, byte[] iv) throws Exception {
+        if (encryptedData.length < (GCM_TAG_LENGTH_BITS / 8)) {
+            throw new IllegalArgumentException("Encrypted data too short to contain authentication tag.");
         }
 
         System.out.println("[DEBUG] Decrypting...");
         debugBytes("Encrypted input", encryptedData);
-
-        byte[] iv = Arrays.copyOfRange(encryptedData, 0, IV_SIZE);
-        byte[] ciphertextWithTag = Arrays.copyOfRange(encryptedData, IV_SIZE, encryptedData.length);
-
-        System.out.println("[DEBUG] IV extracted:");
         debugBytes("IV", iv);
 
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION, "BC");
@@ -92,7 +80,7 @@ public class CryptoUtils {
         cipher.init(Cipher.DECRYPT_MODE, key, spec);
 
         try {
-            byte[] plaintext = cipher.doFinal(ciphertextWithTag);
+            byte[] plaintext = cipher.doFinal(encryptedData);
             System.out.println("[DEBUG] Decryption successful.");
             debugBytes("Plaintext", plaintext);
             return plaintext;
@@ -105,14 +93,9 @@ public class CryptoUtils {
         }
     }
 
-    // Generate a random IV
-    private static byte[] generateIV() {
-        byte[] iv = new byte[IV_SIZE];
-        new SecureRandom().nextBytes(iv);
-        return iv;
-    }
+   
 
-    // Helper: print limited debug bytes
+    // Helper: Print limited debug bytes
     private static void debugBytes(String label, byte[] bytes) {
         int length = bytes.length;
         System.out.println("[DEBUG] " + label + ": " + length + " bytes");
@@ -123,7 +106,7 @@ public class CryptoUtils {
         }
     }
 
-    // Helper: convert bytes to hex string
+    // Helper: Convert bytes to hex string
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {

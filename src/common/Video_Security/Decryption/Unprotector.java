@@ -14,14 +14,15 @@ import java.util.Base64;
 public class Unprotector {
 
     private final SecretKey aesKey;
+    private final byte[] aesIV;
 
-    public Unprotector(String base64AESKey, File encryptedFile) throws Exception {
+    public Unprotector(String base64AESKey, File encryptedFile, String base64IV) throws Exception {
         System.out.println("[DEBUG] Starting Unprotector with base64AESKey: " + base64AESKey );
         System.out.println("[DEBUG] Initializing Unprotector...");
         byte[] aesKeyBytes = Base64.getDecoder().decode(base64AESKey);
         System.out.println("[DEBUG] AES key decoded successfully.");
         this.aesKey = new SecretKeySpec(aesKeyBytes, "AES");
-
+        this.aesIV = Base64.getDecoder().decode(base64IV);
 
         unprotectContent(encryptedFile);
     }
@@ -37,14 +38,9 @@ public class Unprotector {
         byte[] encryptedData = Files.readAllBytes(encryptedFile.toPath());
         System.out.println("[DEBUG] Encrypted file read. Size: " + encryptedData.length + " bytes");
     
-        // Extract IV and ciphertext
-        byte[] iv = Arrays.copyOfRange(encryptedData, 0, 12);
-        byte[] ciphertext = Arrays.copyOfRange(encryptedData, 12, encryptedData.length);
-        System.out.println("[DEBUG] IV extracted. Length: " + iv.length + " bytes");
-        System.out.println("[DEBUG] Ciphertext extracted. Length: " + ciphertext.length + " bytes");
-    
-        System.out.println("[DEBUG] Decrypting content...");
-        byte[] decryptedContent = CryptoUtils.decrypt(ciphertext, aesKey);
+        // No IV extraction! The whole file is ciphertext
+        System.out.println("[DEBUG] Decrypting content using provided AES IV...");
+        byte[] decryptedContent = CryptoUtils.decrypt(encryptedData, aesKey, aesIV);
         System.out.println("[DEBUG] Content decrypted successfully. Size: " + decryptedContent.length + " bytes");
     
         // Save the decrypted file

@@ -37,7 +37,7 @@ public class Protector {
      */
     public Path protectContent(File inputFile) throws Exception {
         byte[] fileData = Files.readAllBytes(inputFile.toPath());
-        byte[] encryptedContent = CryptoUtils.encrypt(fileData, aesKey);
+        byte[] encryptedContent = CryptoUtils.encrypt(fileData, aesKey, aesIV);
 
    
         // Use configured video folder

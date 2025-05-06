@@ -1,76 +1,10 @@
 {
    "videos" : [
       {
-         "encryptedPath" : "src/server/cartoons/Hooked Bear (1956).mp4.enc",
-         "videoCategory" : "null",
-         "videoName" : "bear",
-         "videoAgeRating" : "null"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
+         "encryptedPath" : "src/server/cartoons/Minnie's Yoo Hoo (1930).mp4.enc",
          "videoCategory" : "dis",
-         "videoName" : "mickey",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "test",
-         "videoAgeRating" : "3"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "test",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "surprise",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "donald",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/All Together (1942).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "allto",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/All Together (1942).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "test",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "don",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
-         "videoCategory" : "null",
-         "videoName" : "dontest",
-         "videoAgeRating" : "null"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
-         "videoCategory" : "disney",
-         "videoName" : "testdon",
-         "videoAgeRating" : "null"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "test3",
-         "videoAgeRating" : "null"
+         "videoName" : "minnie",
+         "videoAgeRating" : "test"
       }
    ]
 }
