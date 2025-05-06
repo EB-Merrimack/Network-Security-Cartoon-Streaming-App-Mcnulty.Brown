@@ -258,7 +258,9 @@ public class ConnectionHandler implements Runnable {
                 // Locate encrypted video file by matching name
                 List<Video> allVideos = videodatabase.getAllVideos();
                 Video target = null;
+                System.out.println("[DEBUG] Searching for video in database...");
                 for (Video v : allVideos) {
+                    System.out.println("[DEBUG] Checking video: " + v.getVideoName());
                     if (v.getVideoName().equals(requestedFile)) {
                         target = v;
                         break;
@@ -271,7 +273,10 @@ public class ConnectionHandler implements Runnable {
                     return;
                 }
         
+                System.out.println("[DEBUG] Video found: " + target.getVideoName());
                 File encFile = target.getEncryptedPath().toFile();
+                System.out.println("[DEBUG] Encrypted file path: " + encFile.getAbsolutePath());
+        
                 if (!encFile.exists()) {
                     System.err.println("[SERVER] Encrypted file not found: " + encFile.getAbsolutePath());
                     channel.sendMessage(new StatusMessage(false, "Encrypted video file not found."));
@@ -279,20 +284,25 @@ public class ConnectionHandler implements Runnable {
                 }
         
                 // STEP 1: Decrypt using admin AES key and IV
+                System.out.println("[DEBUG] Starting decryption with admin AES key...");
                 Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), Admin.getAesIV());
                 unprotector.unprotectContent(encFile);
         
                 // Get the decrypted file
                 File decryptedFile = new File(encFile.getParentFile(), requestedFile);
+                System.out.println("[DEBUG] Decrypted file path: " + decryptedFile.getAbsolutePath());
+        
                 if (!decryptedFile.exists()) {
                     System.err.println("[SERVER] Decrypted video not found.");
                     channel.sendMessage(new StatusMessage(false, "Failed to decrypt video."));
                     return;
                 }
         
+                System.out.println("[DEBUG] Decrypted file found. Reading bytes...");
                 byte[] decryptedVideo = Files.readAllBytes(decryptedFile.toPath());
         
                 // STEP 2: Generate session AES key for the user
+                System.out.println("[DEBUG] Generating AES session key for user...");
                 KeyGenerator aesGen = KeyGenerator.getInstance("AES");
                 aesGen.init(128);
                 SecretKey sessionKey = aesGen.generateKey();
@@ -301,9 +311,11 @@ public class ConnectionHandler implements Runnable {
                 SecureRandom rand = new SecureRandom();
                 rand.nextBytes(iv);
         
+                System.out.println("[DEBUG] Encrypting video with session key...");
                 byte[] reEncrypted = CryptoUtils.encrypt(decryptedVideo, sessionKey, iv);
         
                 // STEP 3: Encrypt AES key with user's ElGamal public key
+                System.out.println("[DEBUG] Retrieving user's public key...");
                 String userPubKeyB64 = UserDatabase.getEncodedPublicKey(user);
                 if (userPubKeyB64 == null) {
                     System.err.println("[SERVER] No public key found for user.");
@@ -311,12 +323,14 @@ public class ConnectionHandler implements Runnable {
                     return;
                 }
         
+                System.out.println("[DEBUG] Public key found. Encrypting session key with ElGamal...");
                 PublicKey userPubKey = CryptoUtils.decodeElGamalPublicKey(Base64.getDecoder().decode(userPubKeyB64));
                 Cipher elgCipher = Cipher.getInstance("ElGamal", "BC");
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKey.getEncoded());
         
                 // STEP 4: Send DownloadResponseMessage
+                System.out.println("[DEBUG] Sending DownloadResponseMessage...");
                 DownloadResponseMessage response = new DownloadResponseMessage(
                     requestedFile,
                     Base64.getEncoder().encodeToString(reEncrypted),
@@ -338,6 +352,7 @@ public class ConnectionHandler implements Runnable {
                 } catch (Exception ignored) {}
             }
         }
+        
     
     
 }
