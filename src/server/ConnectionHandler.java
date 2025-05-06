@@ -285,6 +285,10 @@ public class ConnectionHandler implements Runnable {
         
                 // STEP 1: Decrypt using admin AES key and IV
                 System.out.println("[DEBUG] Starting decryption with admin AES key...");
+                System.out.println("[DEBUG] Decryption IV: " + Admin.getAesIV());
+                System.out.println("[DEBUG] Encrypted AES Key: " + Admin.getEncryptedAESKey());
+                Admin.getInstance();
+                System.out.println("[DEBUG] Admin instance loaded successfully.");
                 Unprotector unprotector = new Unprotector(Admin.getEncryptedAESKey(), Admin.getAesIV());
                 unprotector.unprotectContent(encFile);
         
