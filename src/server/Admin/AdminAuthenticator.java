@@ -1,7 +1,6 @@
 package server.Admin;
 
 import common.protocol.messages.AdminAuth;
-import common.protocol.messages.AuthenticateMessage;
 import common.protocol.user_auth.TOTP;
 import java.security.MessageDigest;
 import java.util.Base64;

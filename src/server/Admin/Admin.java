@@ -3,12 +3,10 @@ package server.Admin;
 import merrimackutil.json.JSONSerializable;
 import merrimackutil.json.JsonIO;
 import merrimackutil.json.types.JSONType;
-import merrimackutil.json.types.JSONArray;
 import merrimackutil.json.types.JSONObject;
 
 import java.io.File;
 import java.io.InvalidObjectException;
-import java.io.IOException;
 
 public class Admin implements JSONSerializable {
     private String salt;
