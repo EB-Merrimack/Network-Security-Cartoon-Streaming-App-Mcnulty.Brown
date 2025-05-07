@@ -46,10 +46,15 @@ import merrimackutil.util.NonceCache;
 public class ConnectionHandler implements Runnable {
 
     private ProtocolChannel channel;
+    @SuppressWarnings("unused")
     private NonceCache nonceCache;
+    @SuppressWarnings("unused")
     private boolean doDebug = false;
+    @SuppressWarnings("unused")
     private String serviceName;
+    @SuppressWarnings("unused")
     private String secret;
+    @SuppressWarnings("unused")
     private byte[] sessionKey;
 
     /**
@@ -100,14 +105,13 @@ public class ConnectionHandler implements Runnable {
       private void runCommunication() {
         try {
             while (true) {
-                System.out.println("[DEBUG] Waiting to receive a message...");
                 
                 Message msg = null;
     
                 try {
                     // Try to receive the message
                     msg = channel.receiveMessage();
-                    System.out.println("[DEBUG] Received message of type: " + msg.getType());
+                    
                 } catch (NullPointerException e) {
                     // If a NullPointerException occurs, log it and continue waiting for the next message
                     System.err.println("[ERROR] NullPointerException encountered while receiving message.");
@@ -115,9 +119,9 @@ public class ConnectionHandler implements Runnable {
                     // You can decide whether to break out of the loop or continue waiting
                     continue; // Continue waiting for the next message
                 }
-                System.out.println("[DEBUG] Received message: " + msg);
+               
             if (msg.getType().equals("create-account")) {
-                System.out.println("[SERVER] Received CreateMessage.");
+               
                 // Handle CreateMessage 
                 handleCreateMessage(msg);
                 return;
@@ -132,7 +136,7 @@ public class ConnectionHandler implements Runnable {
             return;
         }
             else if (msg.getType().equals("AdminAuth")) {
-                System.out.println("[SERVER] Received AdminAuth.");
+               
                 boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
 
                 if (success) {
@@ -145,17 +149,17 @@ public class ConnectionHandler implements Runnable {
                 
             }
             else if (msg.getType().equals("AdminInsertVideoRequest")) {
-                System.out.println("[SERVER] Received AdminInsertVideoRequest.");
+               
                 // Handle AdminInsertVideoRequest
                 handleAdminInsertVideoRequest(msg);
                 return;
             } else if (msg.getType().equals("DownloadRequest")) {
-                System.out.println("[SERVER] Received DownloadRequest.");
+              
                 handleDownloadRequest((DownloadRequestMessage) msg);
                 continue; // Continue waiting for the next message
             }
             else if(msg.getType().equals("SearchRequest")) {
-                System.out.println("[SERVER] Received SearchRequest.");
+             
                 handleSearchRequest((SearchRequestMessage) msg);
                 return; 
             }
@@ -173,8 +177,7 @@ public class ConnectionHandler implements Runnable {
     private void handleSearchRequest(SearchRequestMessage msg) {
         // 1. Load the full video database
         List<Video> allVideos = videodatabase.getAllVideos();  
-        System.out.println("[SERVER] Received SearchRequest.");
-        System.out.println("Searching through all videos: " + allVideos.size());
+        
     
         // 2. Extract search fields
         String encryptedPath = msg.getEncryptedPath();
@@ -187,13 +190,13 @@ public class ConnectionHandler implements Runnable {
         for (Video video : allVideos) {
             boolean matches = false; // Start assuming it doesn't match
     
-            System.out.println("Evaluating video: " + video.getVideoName());
+          
     
             // FIRST CHECK: Encrypted Path
             if (encryptedPath == null || encryptedPath.equals("null") || encryptedPath.equals(video.getEncryptedPath())) {
                 
                 matches = true;
-                System.out.println("Encrypted path matches or not provided.");
+               
             } else {
                 matches = false;
             }
@@ -203,7 +206,7 @@ public class ConnectionHandler implements Runnable {
                 // Video Category
                 if (videoCategory == null  || videoCategory.equals("null") || videoCategory.equals(video.getVideoCategory())) {
                     matches = true;
-                    System.out.println("Category does not match, skipping video.");
+                  
                 }
                 else {
                     matches = false;
@@ -213,7 +216,7 @@ public class ConnectionHandler implements Runnable {
                 if (matches){
                 if (videoName == null || videoName.equals("null") || videoName.equals(video.getVideoName())) {
                     matches = true;
-                    System.out.println("Name does not match, skipping video.");
+                 
                 }
                 else {
                     matches = false;
@@ -225,7 +228,7 @@ public class ConnectionHandler implements Runnable {
                 // Video Age Rating
                 if (videoAgeRating == null || videoAgeRating.equals("null") || videoAgeRating.equals(video.getVideoAgeRating())) {
                     matches = true;
-                    System.out.println("Age rating does not match, skipping video.");
+                    
                 }
                 else {
                     matches = false;
@@ -241,21 +244,14 @@ public class ConnectionHandler implements Runnable {
                     video.getVideoAgeRating()
                 );
                 matchingFiles.add(info);
-                System.out.println("Match found and added: " + video.getVideoName());
-            } else {
-                System.out.println("Video did not match.");
-            }
+              
+            } 
         }
     
-        // Final output
-        System.out.println("Matching files: ");
-        for (SearchResponseMessage.VideoInfo info : matchingFiles) {
-            System.out.println(" - " + info.videoName());
-        }
-    
+      
         // 4. Send the SearchResponseMessage
         SearchResponseMessage response = new SearchResponseMessage(matchingFiles);
-        System.out.println("[SERVER] Sending SearchResponseMessage.");
+
         channel.sendMessage(response);
     }
     
@@ -435,8 +431,6 @@ public class ConnectionHandler implements Runnable {
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
         
-                System.out.println("[SERVER] Encrypted session key: " + Base64.getEncoder().encodeToString(encryptedSessionKey));
-        
                 DownloadResponseMessage response = new DownloadResponseMessage(
                     target.getVideoCategory(),
                     target.getVideoName(),
@@ -466,7 +460,6 @@ public class ConnectionHandler implements Runnable {
         // Send response to client with the file save location
         channel.sendMessage(response);
             Files.deleteIfExists(decryptedPath); // Cleanup
-            System.out.println("[SERVER] Cleaned up temporary decrypted file.");
 
         } catch (Exception e) {
             System.err.println("[SERVER ERROR] " + e.getMessage());
