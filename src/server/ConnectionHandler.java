@@ -7,24 +7,18 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Base64.Decoder;
 
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-import server.Configuration;
 import server.Admin.Admin;
-import server.Admin.AdminAuthenticator;
 import server.Admin.AdminAuthenticator;
 import server.Admin.AdminVerifier;
 import server.Video.Video;
@@ -42,9 +36,11 @@ import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.DownloadRequestMessage;
 import common.protocol.messages.DownloadResponseMessage;
 
+import common.protocol.messages.SearchRequestMessage;
+import common.protocol.messages.SearchResponseMessage;
+
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
-import common.protocol.user_auth.User;
 import common.protocol.user_auth.UserDatabase;
 import merrimackutil.util.NonceCache;
 
@@ -52,10 +48,15 @@ import merrimackutil.util.NonceCache;
 public class ConnectionHandler implements Runnable {
 
     private ProtocolChannel channel;
+    @SuppressWarnings("unused")
     private NonceCache nonceCache;
+    @SuppressWarnings("unused")
     private boolean doDebug = false;
+    @SuppressWarnings("unused")
     private String serviceName;
+    @SuppressWarnings("unused")
     private String secret;
+    @SuppressWarnings("unused")
     private byte[] sessionKey;
 
     /**
@@ -77,7 +78,7 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.messages.DownloadRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchResponseMessage());
-       
+
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new AdminAuth());
        
@@ -106,14 +107,13 @@ public class ConnectionHandler implements Runnable {
       private void runCommunication() {
         try {
             while (true) {
-                System.out.println("[DEBUG] Waiting to receive a message...");
                 
                 Message msg = null;
     
                 try {
                     // Try to receive the message
                     msg = channel.receiveMessage();
-                    System.out.println("[DEBUG] Received message of type: " + msg.getType());
+                    
                 } catch (NullPointerException e) {
                     // If a NullPointerException occurs, log it and continue waiting for the next message
                     System.err.println("[ERROR] NullPointerException encountered while receiving message.");
@@ -121,9 +121,9 @@ public class ConnectionHandler implements Runnable {
                     // You can decide whether to break out of the loop or continue waiting
                     continue; // Continue waiting for the next message
                 }
-                System.out.println("[DEBUG] Received message: " + msg);
+               
             if (msg.getType().equals("create-account")) {
-                System.out.println("[SERVER] Received CreateMessage.");
+               
                 // Handle CreateMessage 
                 handleCreateMessage(msg);
                 return;
@@ -137,42 +137,140 @@ public class ConnectionHandler implements Runnable {
             }
             return;
         }
-        else if (msg.getType().equals("AdminAuth")) {
-            System.out.println("[SERVER] Received AdminAuth.");
-            boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
+            else if (msg.getType().equals("AdminAuth")) {
+               
+                boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
 
-            if (success) {
-                channel.sendMessage(new StatusMessage(true, "Authentication successful."));
-                continue; // Continue waiting for the next message
-            } else {
-                channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
-                return;
+                if (success) {
+                    channel.sendMessage(new StatusMessage(true, "Authentication successful."));
+                    continue; // Continue waiting for the next message
+                } else {
+                    channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
+                    return;
+                }
+                
             }
-            
-        }
-        else if (msg.getType().equals("AdminInsertVideoRequest")) {
-            System.out.println("[SERVER] Received AdminInsertVideoRequest.");
-            // Handle AdminInsertVideoRequest
-            handleAdminInsertVideoRequest(msg);
-            return;
-        } else if (msg.getType().equals("DownloadRequest")) {
-            System.out.println("[SERVER] Received DownloadRequest.");
-            handleDownloadRequest((DownloadRequestMessage) msg);
-            continue; // Continue waiting for the next message
-        }
-         else {
-            System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
-        }
+            else if (msg.getType().equals("AdminInsertVideoRequest")) {
 
+                // Handle AdminInsertVideoRequest
+                handleAdminInsertVideoRequest(msg);
+                return;
+            } else if (msg.getType().equals("DownloadRequest")) {
+
+                handleDownloadRequest((DownloadRequestMessage) msg);
+                continue; // Continue waiting for the next message
+            }
+            else if(msg.getType().equals("SearchRequest")) {
+             
+                handleSearchRequest((SearchRequestMessage) msg);
+                return; 
+            }
+            else {
+                System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
+            }
+
+        }
+    }catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
-}catch (Exception ex) {
-        ex.printStackTrace();
-    }
-}
 
             
-       
+    private void handleSearchRequest(SearchRequestMessage msg) {
+        // 1. Load the full video database
+        List<Video> allVideos = videodatabase.getAllVideos();  
+        
+    
+        // 2. Extract search fields
+        String encryptedPath = msg.getEncryptedPath();
+        String videoCategory = msg.getVideoCategory();
+        String videoName = msg.getVideoName();
+        String videoAgeRating = msg.getVideoAgeRating();
+    
+        // 3. Filter matching videos
+        List<SearchResponseMessage.VideoInfo> matchingFiles = new ArrayList<>();
+        for (Video video : allVideos) {
+            boolean matches = false; // Start assuming it doesn't match
+    
+          
+    
+            // FIRST CHECK: Encrypted Path
+            if (encryptedPath == null || encryptedPath.equals("null") || encryptedPath.equals(video.getEncryptedPath())) {
+                
+                matches = true;
+               
+            } else {
+                matches = false;
+            }
+    
+            // Only continue checking other fields if first check passed
+            if (matches) {
+                // Video Category
+                if (videoCategory == null  || videoCategory.equals("null") || videoCategory.equals(video.getVideoCategory())) {
+                    matches = true;
+                  
+                }
+                else {
+                    matches = false;
+                }
+            }
+                // Video Name
+                if (matches){
+                if (videoName == null || videoName.equals("null") || videoName.equals(video.getVideoName())) {
+                    matches = true;
+                 
+                }
+                else {
+                    matches = false;
+                }
+            }
+            if (matches) {
+                
+            
+                // Video Age Rating
+                if (videoAgeRating == null || videoAgeRating.equals("null") || videoAgeRating.equals(video.getVideoAgeRating())) {
+                    matches = true;
+                    
+                }
+                else {
+                    matches = false;
+                }
+            }
+    
+            if (matches) {
+                // All checks passed, add to result
+                SearchResponseMessage.VideoInfo info = new SearchResponseMessage.VideoInfo(
+                    video.getEncryptedPath(),
+                    video.getVideoCategory(),
+                    video.getVideoName(),
+                    video.getVideoAgeRating()
+                );
+                matchingFiles.add(info);
+              
+            } 
+        }
+    
+      
+        // 4. Send the SearchResponseMessage
+        SearchResponseMessage response = new SearchResponseMessage(matchingFiles);
 
+        channel.sendMessage(response);
+    }
+    
+    
+    
+    
+    
+    
+
+    /**
+     * Handles the request to insert a video into the system. This method first verifies if the admin file is valid.
+     * If the user is an admin, it encrypts the video, saves it, and inserts it into the video database.
+     * If any issues occur during the process, an error message is sent to the client.
+     *
+     * @param msg The Message containing the video insertion request
+     * @throws Exception if any error occurs during the video insertion process
+     */
     private void handleAdminInsertVideoRequest(Message msg) throws Exception {
         if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
             System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
@@ -257,6 +355,13 @@ public class ConnectionHandler implements Runnable {
         }
       
 
+    /**
+     * Handles the download request for a video. It locates the video, decrypts it, re-encrypts it with a session key,
+     * and sends the re-encrypted file back to the client.
+     * Cleans up temporary decrypted files after processing.
+     *
+     * @param msg The message with the download request
+     */
         private void handleDownloadRequest(DownloadRequestMessage msg) {
             try {
                 System.out.println("[SERVER] Handling DownloadRequest.");
@@ -328,8 +433,6 @@ public class ConnectionHandler implements Runnable {
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
         
-                System.out.println("[SERVER] Encrypted session key: " + Base64.getEncoder().encodeToString(encryptedSessionKey));
-        
                 DownloadResponseMessage response = new DownloadResponseMessage(
                     target.getVideoCategory(),
                     target.getVideoName(),
@@ -342,42 +445,46 @@ public class ConnectionHandler implements Runnable {
         
                
                
-        // Extract file name from the given savePath and change extension to .enc
-        Path originalFilePath = Path.of(savePath);
-        String fileNameWithoutExtension = getFileNameWithoutExtension(originalFilePath);
-        
-        // Create a new path with the .enc extension, keeping the same file name
-        Path outputPath = originalFilePath.getParent().resolve(fileNameWithoutExtension + ".enc").toAbsolutePath();
-        
-        // Ensure the parent directories exist
-        Files.createDirectories(outputPath.getParent());
-        
-        // Write the re-encrypted file to the specified output path
-        Files.write(outputPath, reEncrypted);
-        System.out.println("[SERVER] Saved re-encrypted video to: " + outputPath.toAbsolutePath());
+            // Extract file name from the given savePath and change extension to .enc
+            Path originalFilePath = Path.of(savePath);
+            String fileNameWithoutExtension = getFileNameWithoutExtension(originalFilePath);
+            
+            // Create a new path with the .enc extension, keeping the same file name
+            Path outputPath = originalFilePath.getParent().resolve(fileNameWithoutExtension + ".enc").toAbsolutePath();
+            
+            // Ensure the parent directories exist
+            Files.createDirectories(outputPath.getParent());
+            
+            // Write the re-encrypted file to the specified output path
+            Files.write(outputPath, reEncrypted);
+            System.out.println("[SERVER] Saved re-encrypted video to: " + outputPath.toAbsolutePath());
 
-       // Send response to client with the file save location
-       channel.sendMessage(response);
-        Files.deleteIfExists(decryptedPath); // Cleanup
-        System.out.println("[SERVER] Cleaned up temporary decrypted file.");
+        // Send response to client with the file save location
+        channel.sendMessage(response);
+            Files.deleteIfExists(decryptedPath); // Cleanup
 
-    } catch (Exception e) {
-        System.err.println("[SERVER ERROR] " + e.getMessage());
-        e.printStackTrace();
-        try {
-            channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("[SERVER ERROR] " + e.getMessage());
+            e.printStackTrace();
+            try {
+                channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
+            } catch (Exception ignored) {}
+        }
     }
-}
-// Helper function to get the file name without extension
-private String getFileNameWithoutExtension(Path path) {
-    String fileName = path.getFileName().toString();
-    int extensionIndex = fileName.lastIndexOf('.');
-    if (extensionIndex > 0) {
-        return fileName.substring(0, extensionIndex);
-    } else {
-        return fileName;  // No extension found, return the whole filename
-    }
-}
 
+    /**
+     * Helper function to get the file name without its extension.
+     *
+     * @param path The file path
+     * @return The file name without the extension
+     */
+    private String getFileNameWithoutExtension(Path path) {
+        String fileName = path.getFileName().toString();
+        int extensionIndex = fileName.lastIndexOf('.');
+        if (extensionIndex > 0) {
+            return fileName.substring(0, extensionIndex);
+        } else {
+            return fileName;  // No extension found, return the whole filename
+        }
+    }
 }
