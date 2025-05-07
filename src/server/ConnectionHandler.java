@@ -10,6 +10,7 @@ import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
@@ -34,6 +35,10 @@ import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.DownloadRequestMessage;
 import common.protocol.messages.DownloadResponseMessage;
+
+import common.protocol.messages.SearchRequestMessage;
+import common.protocol.messages.SearchResponseMessage;
+
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.UserDatabase;
@@ -43,10 +48,15 @@ import merrimackutil.util.NonceCache;
 public class ConnectionHandler implements Runnable {
 
     private ProtocolChannel channel;
+    @SuppressWarnings("unused")
     private NonceCache nonceCache;
+    @SuppressWarnings("unused")
     private boolean doDebug = false;
+    @SuppressWarnings("unused")
     private String serviceName;
+    @SuppressWarnings("unused")
     private String secret;
+    @SuppressWarnings("unused")
     private byte[] sessionKey;
 
     /**
@@ -68,7 +78,7 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.messages.DownloadRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchResponseMessage());
-    
+
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new AdminAuth());
        
@@ -97,14 +107,13 @@ public class ConnectionHandler implements Runnable {
       private void runCommunication() {
         try {
             while (true) {
-                System.out.println("[DEBUG] Waiting to receive a message...");
                 
                 Message msg = null;
     
                 try {
                     // Try to receive the message
                     msg = channel.receiveMessage();
-                    System.out.println("[DEBUG] Received message of type: " + msg.getType());
+                    
                 } catch (NullPointerException e) {
                     // If a NullPointerException occurs, log it and continue waiting for the next message
                     System.err.println("[ERROR] NullPointerException encountered while receiving message.");
@@ -112,9 +121,9 @@ public class ConnectionHandler implements Runnable {
                     // You can decide whether to break out of the loop or continue waiting
                     continue; // Continue waiting for the next message
                 }
-                System.out.println("[DEBUG] Received message: " + msg);
+               
             if (msg.getType().equals("create-account")) {
-                System.out.println("[SERVER] Received CreateMessage.");
+               
                 // Handle CreateMessage 
                 handleCreateMessage(msg);
                 return;
@@ -142,14 +151,19 @@ public class ConnectionHandler implements Runnable {
                 
             }
             else if (msg.getType().equals("AdminInsertVideoRequest")) {
-                
+
                 // Handle AdminInsertVideoRequest
                 handleAdminInsertVideoRequest(msg);
                 return;
             } else if (msg.getType().equals("DownloadRequest")) {
-                
+
                 handleDownloadRequest((DownloadRequestMessage) msg);
                 continue; // Continue waiting for the next message
+            }
+            else if(msg.getType().equals("SearchRequest")) {
+             
+                handleSearchRequest((SearchRequestMessage) msg);
+                return; 
             }
             else {
                 System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
@@ -162,6 +176,93 @@ public class ConnectionHandler implements Runnable {
     }
 
             
+    private void handleSearchRequest(SearchRequestMessage msg) {
+        // 1. Load the full video database
+        List<Video> allVideos = videodatabase.getAllVideos();  
+        
+    
+        // 2. Extract search fields
+        String encryptedPath = msg.getEncryptedPath();
+        String videoCategory = msg.getVideoCategory();
+        String videoName = msg.getVideoName();
+        String videoAgeRating = msg.getVideoAgeRating();
+    
+        // 3. Filter matching videos
+        List<SearchResponseMessage.VideoInfo> matchingFiles = new ArrayList<>();
+        for (Video video : allVideos) {
+            boolean matches = false; // Start assuming it doesn't match
+    
+          
+    
+            // FIRST CHECK: Encrypted Path
+            if (encryptedPath == null || encryptedPath.equals("null") || encryptedPath.equals(video.getEncryptedPath())) {
+                
+                matches = true;
+               
+            } else {
+                matches = false;
+            }
+    
+            // Only continue checking other fields if first check passed
+            if (matches) {
+                // Video Category
+                if (videoCategory == null  || videoCategory.equals("null") || videoCategory.equals(video.getVideoCategory())) {
+                    matches = true;
+                  
+                }
+                else {
+                    matches = false;
+                }
+            }
+                // Video Name
+                if (matches){
+                if (videoName == null || videoName.equals("null") || videoName.equals(video.getVideoName())) {
+                    matches = true;
+                 
+                }
+                else {
+                    matches = false;
+                }
+            }
+            if (matches) {
+                
+            
+                // Video Age Rating
+                if (videoAgeRating == null || videoAgeRating.equals("null") || videoAgeRating.equals(video.getVideoAgeRating())) {
+                    matches = true;
+                    
+                }
+                else {
+                    matches = false;
+                }
+            }
+    
+            if (matches) {
+                // All checks passed, add to result
+                SearchResponseMessage.VideoInfo info = new SearchResponseMessage.VideoInfo(
+                    video.getEncryptedPath(),
+                    video.getVideoCategory(),
+                    video.getVideoName(),
+                    video.getVideoAgeRating()
+                );
+                matchingFiles.add(info);
+              
+            } 
+        }
+    
+      
+        // 4. Send the SearchResponseMessage
+        SearchResponseMessage response = new SearchResponseMessage(matchingFiles);
+
+        channel.sendMessage(response);
+    }
+    
+    
+    
+    
+    
+    
+
     /**
      * Handles the request to insert a video into the system. This method first verifies if the admin file is valid.
      * If the user is an admin, it encrypts the video, saves it, and inserts it into the video database.
@@ -332,8 +433,6 @@ public class ConnectionHandler implements Runnable {
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
         
-                System.out.println("[SERVER] Encrypted session key: " + Base64.getEncoder().encodeToString(encryptedSessionKey));
-        
                 DownloadResponseMessage response = new DownloadResponseMessage(
                     target.getVideoCategory(),
                     target.getVideoName(),
@@ -363,7 +462,6 @@ public class ConnectionHandler implements Runnable {
         // Send response to client with the file save location
         channel.sendMessage(response);
             Files.deleteIfExists(decryptedPath); // Cleanup
-            System.out.println("[SERVER] Cleaned up temporary decrypted file.");
 
         } catch (Exception e) {
             System.err.println("[SERVER ERROR] " + e.getMessage());
