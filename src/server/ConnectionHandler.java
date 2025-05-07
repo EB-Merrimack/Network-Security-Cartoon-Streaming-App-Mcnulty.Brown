@@ -340,15 +340,17 @@ public class ConnectionHandler implements Runnable {
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
         
-                // 6. Send the encrypted video, encrypted key, and IV to the client
+                System.out.println("[SERVER] Encrypted session key: " + Base64.getEncoder().encodeToString(encryptedSessionKey));
+        
                 DownloadResponseMessage response = new DownloadResponseMessage(
-                    savePath,
                     target.getVideoCategory(),
                     target.getVideoName(),
                     target.getVideoAgeRating(),
                     Base64.getEncoder().encodeToString(encryptedSessionKey),
-                    Base64.getEncoder().encodeToString(iv)
+                    Base64.getEncoder().encodeToString(iv),
+                    savePath
                 );
+                
         
                
                
