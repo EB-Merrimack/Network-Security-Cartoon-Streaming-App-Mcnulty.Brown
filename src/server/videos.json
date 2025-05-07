@@ -17,6 +17,12 @@
          "videoCategory" : "test",
          "videoName" : "bear",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/All Together (1942).mp4.enc",
+         "videoCategory" : "null",
+         "videoName" : "all together",
+         "videoAgeRating" : "pg"
       }
    ]
 }
