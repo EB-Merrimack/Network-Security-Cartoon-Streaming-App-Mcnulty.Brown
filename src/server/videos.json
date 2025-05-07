@@ -5,6 +5,18 @@
          "videoCategory" : "dis",
          "videoName" : "minnie",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Hooked Bear (1956).mp4.enc",
+         "videoCategory" : "test",
+         "videoName" : "bear",
+         "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Hooked Bear (1956).mp4.enc",
+         "videoCategory" : "test",
+         "videoName" : "bear",
+         "videoAgeRating" : "pg"
       }
    ]
 }

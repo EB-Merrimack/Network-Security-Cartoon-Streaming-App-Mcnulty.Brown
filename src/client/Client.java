@@ -39,6 +39,8 @@ import merrimackutil.cli.OptionParser;
 import merrimackutil.codec.Base32;
 import merrimackutil.util.NonceCache;
 import merrimackutil.util.Tuple;
+import java.awt.Desktop;
+
 
 public class Client {
     // Global variables
@@ -306,6 +308,17 @@ System.out.println("[INFO] Encrypted file will be saved as: " + inputPath);
 
             Files.write(decryptedFilePath, decryptedVideo);
             System.out.println("[INFO] Decrypted video saved to: " + finalPath);
+
+            try {
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().open(decryptedFilePath.toFile());
+                    System.out.println("[INFO] Attempting to autoplay the video...");
+                } else {
+                    System.err.println("[WARN] Desktop operations not supported on this platform.");
+                }
+            } catch (Exception e) {
+                System.err.println("[ERROR] Failed to autoplay video: " + e.getMessage());
+            }
 
         } catch (Exception e) {
             System.err.println("[ERROR] Failed to decrypt the video: " + e.getMessage());
