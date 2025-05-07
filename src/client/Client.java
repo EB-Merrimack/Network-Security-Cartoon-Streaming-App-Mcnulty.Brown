@@ -247,7 +247,6 @@ public class Client {
 
         String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
         byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
-        System.out.println("[DEBUG] Private key length: " + privKeyBytes.length);
 
     // Prompt the user for the file path within quotes
     String inputPath = console.readLine("Enter the path to save the encrypted file (in quotes, using two backslashes per backslash)\n" +
@@ -280,21 +279,14 @@ public class Client {
         channel.addMessageType(new StatusMessage());
 
         // === Send Download Request with savePath ===
-        System.out.println("[INFO] Sending download request...");
         DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes, inputPath);
         channel.sendMessage(downloadMsg);
 
         Message response = channel.receiveMessage();
-        System.out.println("[DEBUG] Received message type: " + (response != null ? response.getType() : "null"));
 
         if (response instanceof DownloadResponseMessage) {
             DownloadResponseMessage drm = (DownloadResponseMessage) response;
-            System.out.println("[INFO] Received encrypted video information.");
 
-            // === DEBUG Fields ===
-            System.out.println("[DEBUG] Encrypted AES key (B64): " + drm.getEncryptedAESKey());
-            System.out.println("[DEBUG] IV (B64): " + drm.getIv());
-            System.out.println("[DEBUG] Save path: " + inputPath);
 
             // Decode fields
             byte[] encryptedKey = Base64.getDecoder().decode(drm.getEncryptedAESKey());
@@ -319,8 +311,6 @@ public class Client {
                 elgamal.init(Cipher.DECRYPT_MODE, privKey);
                 aesKeyBytes = elgamal.doFinal(encryptedKey);
 
-                System.out.println("[DEBUG] Unwrapped AES key (length): " + aesKeyBytes.length);
-                System.out.println("[DEBUG] AES key (Base64): " + Base64.getEncoder().encodeToString(aesKeyBytes));
             } catch (Exception e) {
                 System.err.println("[ERROR] Failed to unwrap AES key: " + e.getMessage());
                 e.printStackTrace();
@@ -345,7 +335,6 @@ public class Client {
                 try {
                     if (Desktop.isDesktopSupported()) {
                         Desktop.getDesktop().open(decryptedFilePath.toFile());
-                        System.out.println("[INFO] Attempting to autoplay the video...");
                     } else {
                         System.err.println("[WARN] Desktop operations not supported on this platform.");
                     }
@@ -399,13 +388,7 @@ public class Client {
     
             switch (choice) {
                 case "1":
-                checkAuthentication(); // <<< check if session timed out
-                // Perform the search without user input
-                search(null, null, null, null);
-                break;
-                
-            case "2":
-                checkAuthentication(); // <<< check if session timed out
+                checkAuthentication(); //check if session timed out
                 System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
             
                 // Ask for Encrypted Path
@@ -498,18 +481,15 @@ public class Client {
             String password = new String(console.readPassword());
     
             // 1. Generate ElGamal keypair
-            System.out.println("[DEBUG] Generating ElGamal key pair...");
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ElGamal", "BC");
             SecureRandom rand = SecureRandom.getInstanceStrong();  // Strong random source
             keyGen.initialize(512, rand);  // Pass it explicitly
             KeyPair kp = keyGen.generateKeyPair();
 
             
-            System.out.println("[DEBUG] Encoding public key...");
             String pubKeyEncoded = Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
             String privKeyEncoded = Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded());
             
-            System.out.println("[DEBUG] Public Key (Base64):\n" + pubKeyEncoded);
             
            
             // 2. Generate AES key
