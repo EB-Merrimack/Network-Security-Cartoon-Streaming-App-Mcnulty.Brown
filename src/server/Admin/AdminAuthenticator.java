@@ -16,27 +16,22 @@ public class AdminAuthenticator {
      * @return true if authenticated; false otherwise
      */
     public static boolean authenticate(AdminAuth msg) {
-        System.out.println("[DEBUG] Authenticating admin...");
 
         try {
             String username = msg.getUser();
             String password = msg.getPass();
             String otp = msg.getOtp();
 
-            if (DEBUG) {
-                System.out.println("[DEBUG] AuthenticateRequest - user: " + username + ", password: " + password + ", otp: " + otp);
-            }
+          
 
             // 1. Check username
             Admin admin = Admin.getInstance(); // Always reference the singleton Admin instance
 
             if (admin == null) {
-                if (DEBUG) System.out.println("[DEBUG] Admin is not initialized.");
                 return false;
             }
 
             if (!admin.getUser().equals(username)) {
-                if (DEBUG) System.out.println("[DEBUG] Username mismatch.");
                 return false;
             }
 
@@ -52,28 +47,16 @@ public class AdminAuthenticator {
             );
             String passwordHash = Base64.getEncoder().encodeToString(hash);
 
-            if (DEBUG) {
-                System.out.println("[DEBUG] Calculated password hash: " + passwordHash);
-            }
 
             if (!MessageDigest.isEqual(passwordHash.getBytes(), admin.getPass().getBytes())) {
-                if (DEBUG) System.out.println("[DEBUG] Password hash mismatch.");
                 return false;
             }
 
             // 3. Validate OTP
             boolean otpValid = verifyTOTP(admin.getTotpKey(), otp);
-
-            if (DEBUG) {
-                System.out.println("[DEBUG] OTP validation result: " + otpValid);
-            }
-
             return otpValid;
 
         } catch (Exception e) {
-            if (DEBUG) {
-                System.out.println("[DEBUG] Authentication error: " + e.getMessage());
-            }
             e.printStackTrace();
             return false;
         }

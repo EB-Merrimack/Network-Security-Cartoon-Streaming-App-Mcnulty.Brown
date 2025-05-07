@@ -109,7 +109,6 @@ public class Admin implements JSONSerializable {
         if (instance == null) {
             try {
                 File adminFile = new File(server.Configuration.getAdminFile());
-                System.out.println("[DEBUG] Admin file path: " + adminFile.getAbsolutePath());
                 
                 // Check if the file exists
                 if (!adminFile.exists()) {
@@ -118,7 +117,6 @@ public class Admin implements JSONSerializable {
                 }
 
                 JSONObject entry = (JSONObject) JsonIO.readObject(adminFile);
-                System.out.println("[DEBUG] Loaded admin.json: " + entry.toString());
 
              
 
@@ -132,7 +130,6 @@ public class Admin implements JSONSerializable {
                     entry.getString("encryptedAESKey"),
                     entry.getString("aesIV")
                 );
-                System.out.println("[DEBUG] Admin instance loaded successfully.");
             } catch (Exception e) {
                 System.err.println("[Admin] Error loading admin.json: " + e.getMessage());
                 e.printStackTrace();

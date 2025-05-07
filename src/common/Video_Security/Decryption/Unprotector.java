@@ -15,10 +15,7 @@ public class Unprotector {
     private final byte[] aesIV;
 
     public Unprotector(String base64AESKey, File encryptedFile, String base64IV) throws Exception {
-        System.out.println("[DEBUG] Starting Unprotector with base64AESKey: " + base64AESKey );
-        System.out.println("[DEBUG] Initializing Unprotector...");
         byte[] aesKeyBytes = Base64.getDecoder().decode(base64AESKey);
-        System.out.println("[DEBUG] AES key decoded successfully.");
         this.aesKey = new SecretKeySpec(aesKeyBytes, "AES");
         this.aesIV = Base64.getDecoder().decode(base64IV);
 
@@ -26,7 +23,6 @@ public class Unprotector {
     }
 
     public Path unprotectContent(File encryptedFile) throws Exception {
-        System.out.println("[DEBUG] Starting unprotection for file: " + encryptedFile.getAbsolutePath());
     
         if (!encryptedFile.exists()) {
             System.err.println("[ERROR] Encrypted file does not exist: " + encryptedFile.getAbsolutePath());
@@ -34,25 +30,19 @@ public class Unprotector {
         }
     
         byte[] encryptedData = Files.readAllBytes(encryptedFile.toPath());
-        System.out.println("[DEBUG] Encrypted file read. Size: " + encryptedData.length + " bytes");
     
-        // No IV extraction! The whole file is ciphertext
-        System.out.println("[DEBUG] Decrypting content using provided AES IV...");
+        //The whole file is ciphertext
         byte[] decryptedContent = CryptoUtils.decrypt(encryptedData, aesKey, aesIV);
-        System.out.println("[DEBUG] Content decrypted successfully. Size: " + decryptedContent.length + " bytes");
     
         // Save the decrypted file
         String originalName = encryptedFile.getName();
         if (originalName.endsWith(".enc")) {
             originalName = originalName.substring(0, originalName.length() - 4);
-            System.out.println("[DEBUG] Stripped '.enc' extension. New filename: " + originalName);
         } else {
             originalName = originalName + ".decrypted";
-            System.out.println("[DEBUG] Appending '.decrypted' to filename. New filename: " + originalName);
         }
     
         Path outputPath = encryptedFile.getParentFile().toPath().resolve(originalName);
-        System.out.println("[DEBUG] Writing decrypted content to: " + outputPath.toAbsolutePath());
     
         Files.write(outputPath, decryptedContent);
     
