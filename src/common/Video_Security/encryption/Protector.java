@@ -50,7 +50,7 @@ public class Protector {
         Path outputPath = videoDir.resolve(outputFileName);
         Files.write(outputPath, encryptedContent);
 
-        System.out.println("Encrypted content (IV + ciphertext) saved to: " + outputPath.toAbsolutePath());
+       
         return outputPath;
     }
 }

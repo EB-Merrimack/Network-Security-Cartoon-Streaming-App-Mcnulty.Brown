@@ -35,8 +35,10 @@ import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.DownloadRequestMessage;
 import common.protocol.messages.DownloadResponseMessage;
+
 import common.protocol.messages.SearchRequestMessage;
 import common.protocol.messages.SearchResponseMessage;
+
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.UserDatabase;
@@ -149,12 +151,12 @@ public class ConnectionHandler implements Runnable {
                 
             }
             else if (msg.getType().equals("AdminInsertVideoRequest")) {
-               
+
                 // Handle AdminInsertVideoRequest
                 handleAdminInsertVideoRequest(msg);
                 return;
             } else if (msg.getType().equals("DownloadRequest")) {
-              
+
                 handleDownloadRequest((DownloadRequestMessage) msg);
                 continue; // Continue waiting for the next message
             }

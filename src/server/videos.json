@@ -1,21 +1,15 @@
 {
    "videos" : [
       {
-         "encryptedPath" : "src/server/cartoons/Minnie's Yoo Hoo (1930).mp4.enc",
-         "videoCategory" : "dis",
-         "videoName" : "minnie",
-         "videoAgeRating" : "pg"
+         "encryptedPath" : "src/server/cartoons/ComiColor_ Simple Simon.mp4.enc",
+         "videoCategory" : "cartoon",
+         "videoName" : "cp",
+         "videoAgeRating" : "pg-13"
       },
       {
-         "encryptedPath" : "src/server/cartoons/Hooked Bear (1956).mp4.enc",
-         "videoCategory" : "test",
-         "videoName" : "bear",
-         "videoAgeRating" : "pg"
-      },
-      {
-         "encryptedPath" : "src/server/cartoons/Hooked Bear (1956).mp4.enc",
-         "videoCategory" : "test",
-         "videoName" : "bear",
+         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
+         "videoCategory" : "disney",
+         "videoName" : "donald",
          "videoAgeRating" : "pg"
       }
    ]

@@ -72,9 +72,7 @@ public class CryptoUtils {
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
 
-        System.out.println("[DEBUG] Encrypting...");
-        debugBytes("Plaintext", data);
-        debugBytes("IV", iv);
+      
 
         byte[] encryptedData = cipher.doFinal(data);
 
@@ -97,9 +95,8 @@ public class CryptoUtils {
             throw new IllegalArgumentException("Encrypted data too short to contain authentication tag.");
         }
 
-        System.out.println("[DEBUG] Decrypting...");
-        debugBytes("Encrypted input", encryptedData);
-        debugBytes("IV", iv);
+      
+      
 
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION, "BC");
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
@@ -107,8 +104,7 @@ public class CryptoUtils {
 
         try {
             byte[] plaintext = cipher.doFinal(encryptedData);
-            System.out.println("[DEBUG] Decryption successful.");
-            debugBytes("Plaintext", plaintext);
+         
             return plaintext;
         } catch (AEADBadTagException e) {
             System.err.println("[ERROR] Decryption failed: authentication tag mismatch!");
@@ -121,33 +117,5 @@ public class CryptoUtils {
 
    
 
-/**
-     * Helper method to print debug output of a byte array in hexadecimal, truncated if too long.
-     *
-     * @param label a label to identify the data being printed
-     * @param bytes the byte array to print
-     */
-    private static void debugBytes(String label, byte[] bytes) {
-        int length = bytes.length;
-        System.out.println("[DEBUG] " + label + ": " + length + " bytes");
-        if (length <= DEBUG_MAX_BYTES) {
-            System.out.println(bytesToHex(bytes));
-        } else {
-            System.out.println(bytesToHex(Arrays.copyOf(bytes, DEBUG_MAX_BYTES)) + "... [truncated]");
-        }
-    }
 
-/**
-     * Converts a byte array to a hexadecimal string.
-     *
-     * @param bytes the byte array to convert
-     * @return a hexadecimal string representation of the byte array
-     */
-    private static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
-    }
 }
