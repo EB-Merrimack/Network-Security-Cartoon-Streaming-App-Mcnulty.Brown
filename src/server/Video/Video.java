@@ -8,7 +8,11 @@ import merrimackutil.json.JSONSerializable;
 import merrimackutil.json.types.JSONType;
 import merrimackutil.json.types.JSONObject;
 
-
+/**
+ * Represents a video object containing information about the video, such as its encrypted path,
+ * name, category, and age rating. This class also provides functionality for serializing and
+ * deserializing the video data from and to JSON format.
+ */
 public class Video implements JSONSerializable {
     private Path encryptedPath;
     private String videoName;
@@ -18,6 +22,14 @@ public class Video implements JSONSerializable {
     // Empty constructor needed for deserialization
     public Video() {}
 
+    /**
+     * Constructs a new Video object with the specified encrypted path, name, category, and age rating.
+     * 
+     * @param encryptedPath the path where the encrypted video is stored
+     * @param videoName the name of the video
+     * @param videoCategory the category of the video
+     * @param videoAgeRating the age rating of the video
+     */
     public Video(Path encryptedPath, String videoName, String videoCategory, String videoAgeRating) {
         this.encryptedPath = encryptedPath;
         this.videoName = videoName;
@@ -77,7 +89,12 @@ public class Video implements JSONSerializable {
                 '}';
     }
 
-    // Deserialize from JSON object
+    /**
+     * Deserializes a JSON object into a Video object.
+     * 
+     * @param obj the JSON object containing the video data
+     * @throws InvalidObjectException if the provided JSON object is not valid or does not contain the necessary fields
+     */
     @Override
     public void deserialize(JSONType obj) throws InvalidObjectException {
         if (!(obj instanceof JSONObject)) {
@@ -91,7 +108,11 @@ public class Video implements JSONSerializable {
         this.videoAgeRating = json.getString("videoAgeRating");
     }
 
-    // Serialize to JSON object
+    /**
+     * Serializes the Video object to a JSON object.
+     * 
+     * @return a JSON representation of the Video
+     */
     @Override
     public JSONType toJSONType() {
         JSONObject json = new JSONObject();

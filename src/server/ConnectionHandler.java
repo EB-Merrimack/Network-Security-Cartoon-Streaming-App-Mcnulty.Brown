@@ -129,54 +129,60 @@ public class ConnectionHandler implements Runnable {
             }
             return;
         }
-        else if (msg.getType().equals("AdminAuth")) {
-            System.out.println("[SERVER] Received AdminAuth.");
-            boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
+            else if (msg.getType().equals("AdminAuth")) {
+                System.out.println("[SERVER] Received AdminAuth.");
+                boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
 
-            if (success) {
-                channel.sendMessage(new StatusMessage(true, "Authentication successful."));
-                continue; // Continue waiting for the next message
-            } else {
-                channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
-                return;
+                if (success) {
+                    channel.sendMessage(new StatusMessage(true, "Authentication successful."));
+                    continue; // Continue waiting for the next message
+                } else {
+                    channel.sendMessage(new StatusMessage(false, "Authentication failed. Check your password or OTP."));
+                    return;
+                }
+                
+            }else if (msg.getType().equals("PubKeyRequest")) {
+                System.out.println("[SERVER] Received PubKeyRequest.");
+            
+                PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
+                String username = pubKeyRequest.getUser();  // Use getUser() here
+                System.out.println("[SERVER] Public key requested for user: " + username);
+            
+                String base64Key = UserDatabase.getEncodedPublicKey(username) ;  // You might want to change this to take a username
+                System.out.println("[SERVER] Sending public key (Base64): " + base64Key);
+            
+                channel.sendMessage((Message) new StatusMessage(true, base64Key));
+                System.out.println("[SERVER] Public key sent.");
             }
-            
-        }else if (msg.getType().equals("PubKeyRequest")) {
-            System.out.println("[SERVER] Received PubKeyRequest.");
-        
-            PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
-            String username = pubKeyRequest.getUser();  // Use getUser() here
-            System.out.println("[SERVER] Public key requested for user: " + username);
-        
-            String base64Key = UserDatabase.getEncodedPublicKey(username) ;  // You might want to change this to take a username
-            System.out.println("[SERVER] Sending public key (Base64): " + base64Key);
-        
-            channel.sendMessage((Message) new StatusMessage(true, base64Key));
-            System.out.println("[SERVER] Public key sent.");
-        }
-        else if (msg.getType().equals("AdminInsertVideoRequest")) {
-            System.out.println("[SERVER] Received AdminInsertVideoRequest.");
-            // Handle AdminInsertVideoRequest
-            handleAdminInsertVideoRequest(msg);
-            return;
-        } else if (msg.getType().equals("DownloadRequest")) {
-            System.out.println("[SERVER] Received DownloadRequest.");
-            handleDownloadRequest((DownloadRequestMessage) msg);
-            continue; // Continue waiting for the next message
-        }
-         else {
-            System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
-        }
+            else if (msg.getType().equals("AdminInsertVideoRequest")) {
+                System.out.println("[SERVER] Received AdminInsertVideoRequest.");
+                // Handle AdminInsertVideoRequest
+                handleAdminInsertVideoRequest(msg);
+                return;
+            } else if (msg.getType().equals("DownloadRequest")) {
+                System.out.println("[SERVER] Received DownloadRequest.");
+                handleDownloadRequest((DownloadRequestMessage) msg);
+                continue; // Continue waiting for the next message
+            }
+            else {
+                System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
+            }
 
+        }
+    }catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
-}catch (Exception ex) {
-        ex.printStackTrace();
-    }
-}
 
             
-       
-
+    /**
+     * Handles the request to insert a video into the system. This method first verifies if the admin file is valid.
+     * If the user is an admin, it encrypts the video, saves it, and inserts it into the video database.
+     * If any issues occur during the process, an error message is sent to the client.
+     *
+     * @param msg The Message containing the video insertion request
+     * @throws Exception if any error occurs during the video insertion process
+     */
     private void handleAdminInsertVideoRequest(Message msg) throws Exception {
         if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
             System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");
@@ -261,6 +267,13 @@ public class ConnectionHandler implements Runnable {
         }
       
 
+    /**
+     * Handles the download request for a video. It locates the video, decrypts it, re-encrypts it with a session key,
+     * and sends the re-encrypted file back to the client.
+     * Cleans up temporary decrypted files after processing.
+     *
+     * @param msg The message with the download request
+     */
         private void handleDownloadRequest(DownloadRequestMessage msg) {
             try {
                 System.out.println("[SERVER] Handling DownloadRequest.");
@@ -346,42 +359,47 @@ public class ConnectionHandler implements Runnable {
         
                
                
-        // Extract file name from the given savePath and change extension to .enc
-        Path originalFilePath = Path.of(savePath);
-        String fileNameWithoutExtension = getFileNameWithoutExtension(originalFilePath);
-        
-        // Create a new path with the .enc extension, keeping the same file name
-        Path outputPath = originalFilePath.getParent().resolve(fileNameWithoutExtension + ".enc").toAbsolutePath();
-        
-        // Ensure the parent directories exist
-        Files.createDirectories(outputPath.getParent());
-        
-        // Write the re-encrypted file to the specified output path
-        Files.write(outputPath, reEncrypted);
-        System.out.println("[SERVER] Saved re-encrypted video to: " + outputPath.toAbsolutePath());
+            // Extract file name from the given savePath and change extension to .enc
+            Path originalFilePath = Path.of(savePath);
+            String fileNameWithoutExtension = getFileNameWithoutExtension(originalFilePath);
+            
+            // Create a new path with the .enc extension, keeping the same file name
+            Path outputPath = originalFilePath.getParent().resolve(fileNameWithoutExtension + ".enc").toAbsolutePath();
+            
+            // Ensure the parent directories exist
+            Files.createDirectories(outputPath.getParent());
+            
+            // Write the re-encrypted file to the specified output path
+            Files.write(outputPath, reEncrypted);
+            System.out.println("[SERVER] Saved re-encrypted video to: " + outputPath.toAbsolutePath());
 
-       // Send response to client with the file save location
-       channel.sendMessage(response);
-        Files.deleteIfExists(decryptedPath); // Cleanup
-        System.out.println("[SERVER] Cleaned up temporary decrypted file.");
+        // Send response to client with the file save location
+        channel.sendMessage(response);
+            Files.deleteIfExists(decryptedPath); // Cleanup
+            System.out.println("[SERVER] Cleaned up temporary decrypted file.");
 
-    } catch (Exception e) {
-        System.err.println("[SERVER ERROR] " + e.getMessage());
-        e.printStackTrace();
-        try {
-            channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("[SERVER ERROR] " + e.getMessage());
+            e.printStackTrace();
+            try {
+                channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
+            } catch (Exception ignored) {}
+        }
     }
-}
-// Helper function to get the file name without extension
-private String getFileNameWithoutExtension(Path path) {
-    String fileName = path.getFileName().toString();
-    int extensionIndex = fileName.lastIndexOf('.');
-    if (extensionIndex > 0) {
-        return fileName.substring(0, extensionIndex);
-    } else {
-        return fileName;  // No extension found, return the whole filename
-    }
-}
 
+    /**
+     * Helper function to get the file name without its extension.
+     *
+     * @param path The file path
+     * @return The file name without the extension
+     */
+    private String getFileNameWithoutExtension(Path path) {
+        String fileName = path.getFileName().toString();
+        int extensionIndex = fileName.lastIndexOf('.');
+        if (extensionIndex > 0) {
+            return fileName.substring(0, extensionIndex);
+        } else {
+            return fileName;  // No extension found, return the whole filename
+        }
+    }
 }

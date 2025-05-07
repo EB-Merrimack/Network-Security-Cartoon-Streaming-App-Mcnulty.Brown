@@ -9,11 +9,28 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
 
+/**
+ * Handles decryption of AES-encrypted video or content files using a provided Base64-encoded AES key and IV.
+ * 
+ * This class is responsible for:
+ *     Decoding the AES key and IV from Base64</li>
+ *     Decrypting the contents of a given encrypted file</li>
+ *     Saving the decrypted result to disk</li>
+ */
 public class Unprotector {
 
-    private final SecretKey aesKey;
-    private final byte[] aesIV;
+    private final SecretKey aesKey; //The AES secret key used for decryption
+    private final byte[] aesIV;// The initialization vector used for AES decryption.
 
+
+    /**
+     * Constructs a new {@code Unprotector} instance with the given AES key and IV.
+     *
+     * @param base64AESKey The AES key encoded in Base64.
+     * @param encryptedFile The encrypted file (used here for logging).
+     * @param base64IV The initialization vector encoded in Base64.
+     * @throws Exception if the key or IV cannot be decoded.
+     */
     public Unprotector(String base64AESKey, File encryptedFile, String base64IV) throws Exception {
         System.out.println("[DEBUG] Starting Unprotector with base64AESKey: " + base64AESKey );
         System.out.println("[DEBUG] Initializing Unprotector...");
@@ -21,10 +38,16 @@ public class Unprotector {
         System.out.println("[DEBUG] AES key decoded successfully.");
         this.aesKey = new SecretKeySpec(aesKeyBytes, "AES");
         this.aesIV = Base64.getDecoder().decode(base64IV);
-
-    
     }
 
+    /**
+     * Decrypts the contents of the given encrypted file using the AES key and IV provided at construction.
+     * The decrypted file is saved to the same directory with the ".enc" extension removed or ".decrypted" appended.
+     *
+     * @param encryptedFile The encrypted file to be decrypted.
+     * @return The path to the decrypted output file.
+     * @throws Exception if the file does not exist or decryption fails.
+     */
     public Path unprotectContent(File encryptedFile) throws Exception {
         System.out.println("[DEBUG] Starting unprotection for file: " + encryptedFile.getAbsolutePath());
     

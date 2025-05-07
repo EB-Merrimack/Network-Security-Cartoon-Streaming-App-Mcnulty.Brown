@@ -8,6 +8,15 @@ import merrimackutil.json.types.JSONObject;
 import java.io.File;
 import java.io.InvalidObjectException;
 
+/**
+ * Represents the root administrator for the application.
+ * 
+ * This class holds the sensitive data for the root user account, such as password, TOTP key,
+ * public key, encrypted AES key, and initialization vector (IV). It also provides mechanisms to
+ * serialize and deserialize the admin information from and to JSON format.
+ * 
+ */
+
 public class Admin implements JSONSerializable {
     private String salt;
     private String pass;
@@ -22,6 +31,17 @@ public class Admin implements JSONSerializable {
 
     public Admin() {}
 
+    /**
+     * Constructor for creating an Admin object with specified values for all fields.
+     * 
+     * @param salt the salt used in password hashing
+     * @param pass the hashed password of the admin
+     * @param totpKey the key used for TOTP (Time-based One-Time Password)
+     * @param user the username of the admin
+     * @param pubkey the public key used for the admin
+     * @param encryptedAESKey the AES key used for encrypting sensitive data
+     * @param aesIV the initialization vector (IV) used for AES encryption
+     */
     public Admin(String salt, String pass, String totpKey, String user, String pubkey, String encryptedAESKey, String aesIV) {
         this.salt = salt;
         this.pass = pass;
@@ -41,6 +61,12 @@ public class Admin implements JSONSerializable {
     public static String getEncryptedAESKey() { return encryptedAESKey; }
     public static String getAesIV() { return aesIV; }
 
+    /**
+     * Deserializes the given JSON object into the fields of this Admin instance.
+     *
+     * @param obj the JSON object to deserialize
+     * @throws InvalidObjectException if the object is not a valid JSON object or missing required fields
+     */
     @Override
     public void deserialize(JSONType obj) throws InvalidObjectException {
         if (!obj.isObject()) {
@@ -56,6 +82,11 @@ public class Admin implements JSONSerializable {
         this.aesIV = json.getString("aesIV");
     }
 
+    /**
+     * Converts this Admin object into a JSON representation.
+     *
+     * @return the JSON representation of this Admin instance
+     */
     @Override
     public JSONType toJSONType() {
         JSONObject json = new JSONObject();
@@ -69,7 +100,13 @@ public class Admin implements JSONSerializable {
         return json;
     }
 
-    // Update a field
+    /**
+     * Updates a specific field of the Admin object.
+     *
+     * @param key the key of the field to update
+     * @param value the new value to set for the field
+     * @throws IllegalArgumentException if an invalid key is provided
+     */
     public void put(String key, String value) {
         switch (key) {
             case "salt":
@@ -98,13 +135,24 @@ public class Admin implements JSONSerializable {
         }
     }
 
-    // Static method to check if user is admin
+    /**
+     * Checks if the given username belongs to the root admin.
+     *
+     * @param username the username to check
+     * @return true if the username matches the admin's username, false otherwise
+     */
     public static boolean isAdmin(String username) {
         Admin admin = getInstance();
         return admin != null && admin.getUser().equals(username);
     }
 
-    // Static method to load the Admin singleton
+    /**
+     * Loads the singleton instance of the Admin class from a JSON file.
+     * This method reads the admin file, deserializes its content, and creates an Admin instance if
+     * the file exists and is valid.
+     *
+     * @return the singleton instance of the Admin class, or null if loading fails
+     */
     public static Admin getInstance() {
         if (instance == null) {
             try {

@@ -4,8 +4,14 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.security.SecureRandom;
 import java.util.Base64;
-/*used to generate keys for the root users static creation */
-public class AESKeyGen {
+
+    /**
+     * Main method that generates an AES key and a random IV, then prints their Base64 encoded values to the console.
+     * 
+     * @param args Command-line arguments (unused).
+     * @throws Exception if an error occurs while generating the key or IV.
+     */
+    public class AESKeyGen {
     public static void main(String[] args) throws Exception {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(128); // 128-bit AES

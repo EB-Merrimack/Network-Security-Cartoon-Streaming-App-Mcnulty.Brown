@@ -35,6 +35,11 @@ import merrimackutil.codec.Base32;
 import merrimackutil.util.Tuple;
 import java.awt.Desktop;
 
+/**
+ * Client-side application for securely interacting with a video server.
+ * Supports user account creation, login, secure file download, and video search functionalities
+ * over SSL with support for OTP and Base64 private key-based authentication.
+ */
 
 public class Client {
     // Global variables
@@ -48,15 +53,15 @@ public class Client {
     private static String searchQuery;
     private static String downloadFilename;
     private static final Objects mapper = new Objects();
-
     private static final Scanner scanner = new Scanner(System.in);
-
     private static long lastAuthTime = 0;
-private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 
 
-    // Print usage/help
+ /**
+     * Prints command-line usage instructions for the client application.
+     */
     public static void usage() {
         System.out.println("usage:");
         System.out.println("  client --create --user <user> --host <host> --port <portnum>");
@@ -70,7 +75,12 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
         System.exit(1);
     }
 
-    // Parse command-line arguments
+/**
+     * Parses command-line arguments to configure client options.
+     *
+     * @param args The command-line arguments passed to the program.
+     * @throws Exception if parsing fails or input is invalid.
+     */
     public static void processArgs(String[] args) throws Exception {
         if (args.length == 0) {
             usage();
@@ -108,7 +118,12 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
         }
     }
 
-    // Authenticate user (username + password + OTP)
+    /**
+     * Authenticates a user with username, password, and one-time passcode (OTP).
+     *
+     * @return true if authentication is successful; false otherwise.
+     * @throws Exception if SSL connection or communication fails.
+     */
     private static boolean authenticateUser() throws Exception {
         Console console = System.console();
         if (console == null) {
@@ -143,6 +158,12 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
         }
         return status.getStatus();
     }
+
+     /**
+     * Checks if the user's session has expired, and if so, forces re-authentication.
+     *
+     * @throws Exception if re-authentication fails or input/output errors occur.
+     */
     private static void checkAuthentication() throws Exception {
         if (System.currentTimeMillis() - lastAuthTime > AUTH_TIMEOUT_MS) {
             System.out.println("[INFO] Session expired. Re-authentication required.");
@@ -154,193 +175,214 @@ private static final long AUTH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
     }
     
     
-   // Search available videos
-public static void search(String encryptedPath, String videoCategory, String videoName, String videoAgeRating) throws Exception {
-    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-    socket.startHandshake();
+    /**
+     * Searches the server for videos based on specified metadata fields.
+     *
+     * @param encryptedPath  The encrypted path used for access control or filtering.
+     * @param videoCategory  Category of the video (e.g., "Documentary").
+     * @param videoName      Name or title of the video to search for.
+     * @param videoAgeRating Age rating of the video content (e.g., "PG-13").
+     * @throws Exception if SSL connection or message exchange fails.
+     */
+    public static void search(String encryptedPath, String videoCategory, String videoName, String videoAgeRating) throws Exception {
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
 
-    ProtocolChannel channel = new ProtocolChannel(socket);
-    channel.addMessageType(new SearchRequestMessage());
-    channel.addMessageType(new SearchResponseMessage());
-    channel.addMessageType(new StatusMessage());
+        ProtocolChannel channel = new ProtocolChannel(socket);
+        channel.addMessageType(new SearchRequestMessage());
+        channel.addMessageType(new SearchResponseMessage());
+        channel.addMessageType(new StatusMessage());
 
-    SearchRequestMessage searchMsg = new SearchRequestMessage();
-    
-    // You need to set the fields into searchMsg (assuming your SearchRequestMessage supports it)
-    searchMsg.setEncryptedPath(encryptedPath);
-    searchMsg.setVideoCategory(videoCategory);
-    searchMsg.setVideoName(videoName);
-    searchMsg.setVideoAgeRating(videoAgeRating);
+        SearchRequestMessage searchMsg = new SearchRequestMessage();
+        
+        // You need to set the fields into searchMsg (assuming your SearchRequestMessage supports it)
+        searchMsg.setEncryptedPath(encryptedPath);
+        searchMsg.setVideoCategory(videoCategory);
+        searchMsg.setVideoName(videoName);
+        searchMsg.setVideoAgeRating(videoAgeRating);
 
-    channel.sendMessage(searchMsg);
+        channel.sendMessage(searchMsg);
 
-    Message response = channel.receiveMessage();
-    if (response instanceof SearchResponseMessage) {
-        List<String> files = ((SearchResponseMessage) response).getFiles();
-        if (files.isEmpty()) {
-            System.out.println("No matching content found.");
-        } else {
-            System.out.println("Search results:");
-            for (String file : files) {
-                System.out.println(" - " + file);
-            }
-        }
-    } else if (response instanceof StatusMessage) {
-        System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
-    } else {
-        System.out.println("[ERROR] Unexpected response: " + response);
-    }
-
-    channel.closeChannel();
-}
-
-
-   // Download file
-public static void download(String filename) throws Exception {
-    checkAuthentication();
-
-    System.out.println("[INFO] Requesting private key...");
-    Console console = System.console();
-    if (console == null) {
-        throw new IllegalStateException("Console not available. Please run in a real terminal.");
-    }
-
-    String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
-    byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
-    System.out.println("[DEBUG] Private key length: " + privKeyBytes.length);
-
-// Prompt the user for the file path within quotes
-String inputPath = console.readLine("Enter the path to save the encrypted file (in quotes, using two backslashes per backslash)\n" +
-                                   "(for instance \"C:\\\\tmp\\\\encrypted_file\" would resolve to C:\\tmp\\encrypted_file): ");
-
-// Remove the quotes around the input if present
-if (inputPath.startsWith("\"") && inputPath.endsWith("\"")) {
-    inputPath = inputPath.substring(1, inputPath.length() - 1);
-}
-
-// Ensure the path uses proper backslashes
-inputPath = inputPath.replace("\\\\", "\\");
-
-// Ensure the path ends with .enc
-if (!inputPath.toLowerCase().endsWith(".enc")) {
-    inputPath += ".enc";
-}
-
-System.out.println("[INFO] Encrypted file will be saved as: " + inputPath);
-
-    // === Connect to server ===
-    System.out.println("[INFO] Downloading video..." + filename);
-    SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-    SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
-    socket.startHandshake();
-
-    ProtocolChannel channel = new ProtocolChannel(socket);
-    channel.addMessageType(new DownloadRequestMessage());
-    channel.addMessageType(new DownloadResponseMessage());
-    channel.addMessageType(new StatusMessage());
-
-    // === Send Download Request with savePath ===
-    System.out.println("[INFO] Sending download request...");
-    DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes, inputPath);
-    channel.sendMessage(downloadMsg);
-
-    Message response = channel.receiveMessage();
-    System.out.println("[DEBUG] Received message type: " + (response != null ? response.getType() : "null"));
-
-    if (response instanceof DownloadResponseMessage) {
-        DownloadResponseMessage drm = (DownloadResponseMessage) response;
-        System.out.println("[INFO] Received encrypted video information.");
-
-        // === DEBUG Fields ===
-        System.out.println("[DEBUG] Encrypted AES key (B64): " + drm.getEncryptedAESKey());
-        System.out.println("[DEBUG] IV (B64): " + drm.getIv());
-        System.out.println("[DEBUG] Save path: " + inputPath);
-
-        // Decode fields
-        byte[] encryptedKey = Base64.getDecoder().decode(drm.getEncryptedAESKey());
-        byte[] iv = Base64.getDecoder().decode(drm.getIv());
-        String savePathmsg = inputPath; // Retrieve the saved file path
-
-        Path encryptedFilePath = Path.of(savePathmsg);
-        if (!Files.exists(encryptedFilePath)) {
-            System.err.println("[ERROR] Encrypted video file not found at: " + encryptedFilePath);
-            channel.closeChannel();
-            return;
-        }
-
-        // === Unwrap AES key ===
-        byte[] aesKeyBytes;
-        try {
-            java.security.spec.PKCS8EncodedKeySpec keySpec = new java.security.spec.PKCS8EncodedKeySpec(privKeyBytes);
-            java.security.KeyFactory keyFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
-            java.security.PrivateKey privKey = keyFactory.generatePrivate(keySpec);
-
-            Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
-            elgamal.init(Cipher.DECRYPT_MODE, privKey);
-            aesKeyBytes = elgamal.doFinal(encryptedKey);
-
-            System.out.println("[DEBUG] Unwrapped AES key (length): " + aesKeyBytes.length);
-            System.out.println("[DEBUG] AES key (Base64): " + Base64.getEncoder().encodeToString(aesKeyBytes));
-        } catch (Exception e) {
-            System.err.println("[ERROR] Failed to unwrap AES key: " + e.getMessage());
-            e.printStackTrace();
-            channel.closeChannel();
-            return;
-        }
-
-        // Prepare final decrypted path outside try-catch
-        Path decryptedFilePath = Path.of(inputPath.replace(".enc", "_decrypted.mp4"));
-        String finalPath = decryptedFilePath.toAbsolutePath().toString();
-
-        // === Decrypt the video content ===
-        try {
-            byte[] encryptedVideoBytes = Files.readAllBytes(encryptedFilePath);
-
-            SecretKey sessionKey = new SecretKeySpec(aesKeyBytes, "AES");
-            byte[] decryptedVideo = CryptoUtils.decrypt(encryptedVideoBytes, sessionKey, iv);
-
-            Files.write(decryptedFilePath, decryptedVideo);
-            System.out.println("[INFO] Decrypted video saved to: " + finalPath);
-
-            try {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().open(decryptedFilePath.toFile());
-                    System.out.println("[INFO] Attempting to autoplay the video...");
-                } else {
-                    System.err.println("[WARN] Desktop operations not supported on this platform.");
+        Message response = channel.receiveMessage();
+        if (response instanceof SearchResponseMessage) {
+            List<String> files = ((SearchResponseMessage) response).getFiles();
+            if (files.isEmpty()) {
+                System.out.println("No matching content found.");
+            } else {
+                System.out.println("Search results:");
+                for (String file : files) {
+                    System.out.println(" - " + file);
                 }
-            } catch (Exception e) {
-                System.err.println("[ERROR] Failed to autoplay video: " + e.getMessage());
             }
-
-        } catch (Exception e) {
-            System.err.println("[ERROR] Failed to decrypt the video: " + e.getMessage());
-            e.printStackTrace();
-            channel.sendMessage(new StatusMessage(false, "Decryption failed: " + e.getMessage()));
-            channel.closeChannel();
-            return; // Important: Stop here if decryption fails
+        } else if (response instanceof StatusMessage) {
+            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+        } else {
+            System.out.println("[ERROR] Unexpected response: " + response);
         }
 
-        // === User-friendly summary ===
-        System.out.println("\n=== Download Complete ===");
-        System.out.println("Video Name     : " + drm.getVideoname());
-        System.out.println("Category       : " + drm.getVideocatagory());
-        System.out.println("Age Rating     : " + drm.getVideoagerating());
-        System.out.println("Saved Location : " + finalPath);
-        System.out.println("=========================\n");
-
-    } else if (response instanceof StatusMessage) {
-        System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+        channel.closeChannel();
     }
-}
+
+
+/**
+     * Downloads a video file from the server using a Base64-encoded private key for decryption.
+     * Prompts the user to enter a save path for the encrypted video.
+     *
+     * @param filename The name of the file to download.
+     * @throws Exception if authentication fails, input is invalid, or SSL communication errors occur.
+     */
+    public static void download(String filename) throws Exception {
+        checkAuthentication();
+
+        System.out.println("[INFO] Requesting private key...");
+        Console console = System.console();
+        if (console == null) {
+            throw new IllegalStateException("Console not available. Please run in a real terminal.");
+        }
+
+        String privKeyBase64 = console.readLine("Enter your Base64 private key: ");
+        byte[] privKeyBytes = Base64.getDecoder().decode(privKeyBase64);
+        System.out.println("[DEBUG] Private key length: " + privKeyBytes.length);
+
+    // Prompt the user for the file path within quotes
+    String inputPath = console.readLine("Enter the path to save the encrypted file (in quotes, using two backslashes per backslash)\n" +
+                                    "(for instance \"C:\\\\tmp\\\\encrypted_file\" would resolve to C:\\tmp\\encrypted_file): ");
+
+    // Remove the quotes around the input if present
+    if (inputPath.startsWith("\"") && inputPath.endsWith("\"")) {
+        inputPath = inputPath.substring(1, inputPath.length() - 1);
+    }
+
+    // Ensure the path uses proper backslashes
+    inputPath = inputPath.replace("\\\\", "\\");
+
+    // Ensure the path ends with .enc
+    if (!inputPath.toLowerCase().endsWith(".enc")) {
+        inputPath += ".enc";
+    }
+
+    System.out.println("[INFO] Encrypted file will be saved as: " + inputPath);
+
+        // === Connect to server ===
+        System.out.println("[INFO] Downloading video..." + filename);
+        SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        SSLSocket socket = (SSLSocket) factory.createSocket(host, port);
+        socket.startHandshake();
+
+        ProtocolChannel channel = new ProtocolChannel(socket);
+        channel.addMessageType(new DownloadRequestMessage());
+        channel.addMessageType(new DownloadResponseMessage());
+        channel.addMessageType(new StatusMessage());
+
+        // === Send Download Request with savePath ===
+        System.out.println("[INFO] Sending download request...");
+        DownloadRequestMessage downloadMsg = new DownloadRequestMessage(filename, user, privKeyBytes, inputPath);
+        channel.sendMessage(downloadMsg);
+
+        Message response = channel.receiveMessage();
+        System.out.println("[DEBUG] Received message type: " + (response != null ? response.getType() : "null"));
+
+        if (response instanceof DownloadResponseMessage) {
+            DownloadResponseMessage drm = (DownloadResponseMessage) response;
+            System.out.println("[INFO] Received encrypted video information.");
+
+            // === DEBUG Fields ===
+            System.out.println("[DEBUG] Encrypted AES key (B64): " + drm.getEncryptedAESKey());
+            System.out.println("[DEBUG] IV (B64): " + drm.getIv());
+            System.out.println("[DEBUG] Save path: " + inputPath);
+
+            // Decode fields
+            byte[] encryptedKey = Base64.getDecoder().decode(drm.getEncryptedAESKey());
+            byte[] iv = Base64.getDecoder().decode(drm.getIv());
+            String savePathmsg = inputPath; // Retrieve the saved file path
+
+            Path encryptedFilePath = Path.of(savePathmsg);
+            if (!Files.exists(encryptedFilePath)) {
+                System.err.println("[ERROR] Encrypted video file not found at: " + encryptedFilePath);
+                channel.closeChannel();
+                return;
+            }
+
+            // === Unwrap AES key ===
+            byte[] aesKeyBytes;
+            try {
+                java.security.spec.PKCS8EncodedKeySpec keySpec = new java.security.spec.PKCS8EncodedKeySpec(privKeyBytes);
+                java.security.KeyFactory keyFactory = java.security.KeyFactory.getInstance("ElGamal", "BC");
+                java.security.PrivateKey privKey = keyFactory.generatePrivate(keySpec);
+
+                Cipher elgamal = Cipher.getInstance("ElGamal", "BC");
+                elgamal.init(Cipher.DECRYPT_MODE, privKey);
+                aesKeyBytes = elgamal.doFinal(encryptedKey);
+
+                System.out.println("[DEBUG] Unwrapped AES key (length): " + aesKeyBytes.length);
+                System.out.println("[DEBUG] AES key (Base64): " + Base64.getEncoder().encodeToString(aesKeyBytes));
+            } catch (Exception e) {
+                System.err.println("[ERROR] Failed to unwrap AES key: " + e.getMessage());
+                e.printStackTrace();
+                channel.closeChannel();
+                return;
+            }
+
+            // Prepare final decrypted path outside try-catch
+            Path decryptedFilePath = Path.of(inputPath.replace(".enc", "_decrypted.mp4"));
+            String finalPath = decryptedFilePath.toAbsolutePath().toString();
+
+            // === Decrypt the video content ===
+            try {
+                byte[] encryptedVideoBytes = Files.readAllBytes(encryptedFilePath);
+
+                SecretKey sessionKey = new SecretKeySpec(aesKeyBytes, "AES");
+                byte[] decryptedVideo = CryptoUtils.decrypt(encryptedVideoBytes, sessionKey, iv);
+
+                Files.write(decryptedFilePath, decryptedVideo);
+                System.out.println("[INFO] Decrypted video saved to: " + finalPath);
+
+                try {
+                    if (Desktop.isDesktopSupported()) {
+                        Desktop.getDesktop().open(decryptedFilePath.toFile());
+                        System.out.println("[INFO] Attempting to autoplay the video...");
+                    } else {
+                        System.err.println("[WARN] Desktop operations not supported on this platform.");
+                    }
+                } catch (Exception e) {
+                    System.err.println("[ERROR] Failed to autoplay video: " + e.getMessage());
+                }
+
+            } catch (Exception e) {
+                System.err.println("[ERROR] Failed to decrypt the video: " + e.getMessage());
+                e.printStackTrace();
+                channel.sendMessage(new StatusMessage(false, "Decryption failed: " + e.getMessage()));
+                channel.closeChannel();
+                return; // Important: Stop here if decryption fails
+            }
+
+            // === User-friendly summary ===
+            System.out.println("\n=== Download Complete ===");
+            System.out.println("Video Name     : " + drm.getVideoname());
+            System.out.println("Category       : " + drm.getVideocatagory());
+            System.out.println("Age Rating     : " + drm.getVideoagerating());
+            System.out.println("Saved Location : " + finalPath);
+            System.out.println("=========================\n");
+
+        } else if (response instanceof StatusMessage) {
+            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
+        }
+    }
 
 
     
-    // Create post login panel
+    /**
+     * Launches the post-login interactive session panel.
+     * Presents options to the user to search for videos, download videos, or exit.
+     * Includes session timeout checks before each secure operation.
+     * 
+     * @throws Exception if an error occurs during the session or user interaction
+     */    
     public static void interactiveSession() throws Exception {
         while (true) {
             System.out.println();
+            System.out.println("========= VIDEO PORTAL =========");
             System.out.println("Welcome, " + user + "! What would you like to do?");
             System.out.println("[1] Search for videos");
             System.out.println("[2] Download a video");
@@ -407,7 +449,14 @@ System.out.println("[INFO] Encrypted file will be saved as: " + inputPath);
         }
     }
     
-    // Main entry point
+    /**
+     * Main entry point for the secure video client application.
+     * Handles TLS setup, command-line parsing, account creation, and login.
+     * Initiates the interactive session upon successful authentication.
+     * 
+     * @param args command-line arguments passed at runtime
+     * @throws Exception if there is a failure during initialization or execution
+     */
     public static void main(String[] args) throws Exception {
         // Setup TLS and Bouncy Castle
         Security.addProvider(new BouncyCastleProvider());
@@ -517,6 +566,12 @@ System.out.println("[INFO] Encrypted file will be saved as: " + inputPath);
             }
         }
     }
+
+    /**
+     * Clears the console screen for improved readability during prompts.
+     * Works on both Windows and Unix-like systems. If console cannot be cleared,
+     * prints a fallback message.
+     */
     public static void clearConsole() {
         try {
             if (System.getProperty("os.name").contains("Windows")) {
@@ -529,5 +584,4 @@ System.out.println("[INFO] Encrypted file will be saved as: " + inputPath);
             System.out.println("Could not clear console.");
         }
     }
-    
 }

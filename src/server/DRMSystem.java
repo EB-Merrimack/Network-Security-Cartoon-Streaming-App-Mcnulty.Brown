@@ -25,7 +25,8 @@ public class DRMSystem {
     private static boolean doConfig = false;
     private static String configName = null;
     private static NonceCache nonceCache = null;
-       /**
+    
+    /**
      * Prints the help menu.
      */
     public static void usage()
@@ -39,7 +40,8 @@ public class DRMSystem {
         System.out.println("  -h, --help\t\tDisplay the help.");
         System.exit(1);
     }
- /**
+
+    /**
      * Loads the configuration information from the configuration file.
      * @param configName the name of the configuration file.
      */
@@ -70,6 +72,7 @@ public class DRMSystem {
         System.exit(1);
     }
     }
+
     /**
      * Process the command line arguments.
      * @param args the array of command line arguments.
@@ -117,6 +120,7 @@ public class DRMSystem {
         else
         loadConfig("./src/server/config.json");
     }
+
     /**
      * Main entry point of the bulletin board service.
      */
@@ -155,6 +159,5 @@ public class DRMSystem {
             ));
         }
     }
-
  
 }

@@ -26,6 +26,11 @@ public class AdminEnhancement {
     private static final String FILE_PATH = "src/server/Admin/admin.json";
     private static final String HASH_PATH = "src/server/Admin/admin.json.sha256";
 
+    /**
+     * Entry point that creates a secure admin configuration file and its SHA-256 hash.
+     *
+     * @param args command-line arguments (not used)
+     */
     public static void main(String[] args) {
         try {
             // Create the admin data JSONObject, containing secure, encrypted data for the root admin account
@@ -53,7 +58,12 @@ public class AdminEnhancement {
         }
     }
 
-    // Method to write the JSON object securely to a file using JsonIO
+    /**
+     * Writes the admin data to a JSON file and applies read-only permissions.
+     *
+     * @param adminData the {@link Admin} object containing encrypted admin credentials
+     * @throws IOException if writing to the file fails
+     */
     private static void writeSecureJsonFile(Admin adminData) throws IOException {
         File file = new File(FILE_PATH);
         file.getParentFile().mkdirs(); // Ensure parent directories are created
@@ -65,7 +75,14 @@ public class AdminEnhancement {
         setFileReadOnly(file);
     }
 
-    // Method to compute the SHA-256 hash of the given file
+    /**
+     * Computes the SHA-256 hash of the specified file.
+     *
+     * @param filePath the path to the file
+     * @return a Base64-encoded SHA-256 hash string
+     * @throws IOException if the file cannot be read
+     * @throws NoSuchAlgorithmException if SHA-256 is not available
+     */
     private static String computeSHA256(String filePath) throws IOException, NoSuchAlgorithmException {
         byte[] fileBytes = Files.readAllBytes(new File(filePath).toPath());
 
@@ -77,7 +94,12 @@ public class AdminEnhancement {
         return Base64.getEncoder().encodeToString(hashBytes);
     }
 
-    // Method to write the computed SHA-256 hash to a file
+    /**
+     * Writes the SHA-256 hash to a file and makes it read-only.
+     *
+     * @param hash the Base64-encoded SHA-256 hash
+     * @throws IOException if writing the file fails
+     */    
     private static void writeHashFile(String hash) throws IOException {
         File hashFile = new File(HASH_PATH);
 
@@ -90,7 +112,12 @@ public class AdminEnhancement {
         setFileReadOnly(hashFile);
     }
 
-    // Method to set the file's permissions to read-only
+    /**
+     * Attempts to set the specified file to read-only using both standard and POSIX permission methods.
+     *
+     * @param file the file to secure
+     * @throws IOException if the file does not exist or permissions cannot be changed
+     */    
     private static void setFileReadOnly(File file) throws IOException {
         if (!file.exists()) {
             throw new IOException("File not found: " + file.getAbsolutePath());

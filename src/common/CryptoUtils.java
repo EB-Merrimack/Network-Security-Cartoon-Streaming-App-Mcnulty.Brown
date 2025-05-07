@@ -16,6 +16,10 @@ import javax.crypto.Cipher;
 
 import java.util.Arrays;
 
+/**
+ * Utility class providing cryptographic operations including AES-GCM encryption/decryption
+ * and decoding ElGamal public keys from ASN.1 format.
+ */
 public class CryptoUtils {
 
     static {
@@ -27,7 +31,13 @@ public class CryptoUtils {
     private static final int GCM_TAG_LENGTH_BITS = 128; // 16 bytes authentication tag
     private static final int DEBUG_MAX_BYTES = 128; // Max bytes shown in debug output
 
-    // Decode an ElGamal public key from raw ASN.1 bytes
+    /**
+     * Decodes an ElGamal public key from its raw ASN.1 encoded byte format.
+     *
+     * @param encoded the ASN.1-encoded byte array containing the ElGamal public key
+     * @return the reconstructed {@link PublicKey} instance
+     * @throws Exception if decoding fails due to invalid structure or algorithm errors
+     */
     public static PublicKey decodeElGamalPublicKey(byte[] encoded) throws Exception {
         try (ASN1InputStream asn1InputStream = new ASN1InputStream(encoded)) {
             ASN1Sequence sequence = (ASN1Sequence) asn1InputStream.readObject();
@@ -48,7 +58,15 @@ public class CryptoUtils {
         }
     }
 
-    // Encrypt data using AES-GCM
+/**
+     * Encrypts the provided plaintext using AES in GCM mode with the given key and IV.
+     *
+     * @param data the plaintext data to encrypt
+     * @param key the AES secret key
+     * @param iv the initialization vector (IV), must be 12 bytes
+     * @return the encrypted ciphertext including the authentication tag
+     * @throws Exception if encryption fails
+     */
     public static byte[] encrypt(byte[] data, SecretKey key, byte[] iv) throws Exception {
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION, "BC");
         GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
@@ -64,7 +82,16 @@ public class CryptoUtils {
         return encryptedData;
     }
 
-    // Decrypt data using AES-GCM
+/**
+     * Decrypts AES-GCM encrypted data using the given key and IV.
+     *
+     * @param encryptedData the encrypted data including the GCM authentication tag
+     * @param key the AES secret key
+     * @param iv the initialization vector (IV), must match the one used in encryption
+     * @return the decrypted plaintext
+     * @throws SecurityException if the authentication tag is invalid (tampering detected)
+     * @throws Exception if decryption fails due to other reasons
+     */
     public static byte[] decrypt(byte[] encryptedData, SecretKey key, byte[] iv) throws Exception {
         if (encryptedData.length < (GCM_TAG_LENGTH_BITS / 8)) {
             throw new IllegalArgumentException("Encrypted data too short to contain authentication tag.");
@@ -94,7 +121,12 @@ public class CryptoUtils {
 
    
 
-    // Helper: Print limited debug bytes
+/**
+     * Helper method to print debug output of a byte array in hexadecimal, truncated if too long.
+     *
+     * @param label a label to identify the data being printed
+     * @param bytes the byte array to print
+     */
     private static void debugBytes(String label, byte[] bytes) {
         int length = bytes.length;
         System.out.println("[DEBUG] " + label + ": " + length + " bytes");
@@ -105,7 +137,12 @@ public class CryptoUtils {
         }
     }
 
-    // Helper: Convert bytes to hex string
+/**
+     * Converts a byte array to a hexadecimal string.
+     *
+     * @param bytes the byte array to convert
+     * @return a hexadecimal string representation of the byte array
+     */
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {

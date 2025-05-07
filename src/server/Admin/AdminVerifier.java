@@ -7,6 +7,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
+/**
+ * Verifies the integrity of the admin.json file by comparing its SHA-256 hash with the stored hash.
+ * This class ensures that the admin configuration file has not been tampered with by verifying the hash.
+ */
 public class AdminVerifier {
 
     

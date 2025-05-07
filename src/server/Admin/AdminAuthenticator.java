@@ -5,9 +5,13 @@ import common.protocol.user_auth.TOTP;
 import java.security.MessageDigest;
 import java.util.Base64;
 
+/**
+ * Handles the authentication of the admin user using username, password, and One-Time Password (OTP).
+ * This class provides methods to verify the admin credentials, including validating the password and OTP.
+ */
 public class AdminAuthenticator {
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = true; //debug flad to control debug prints
 
     /**
      * Authenticate the static admin.
@@ -79,6 +83,14 @@ public class AdminAuthenticator {
         }
     }
 
+    /**
+     * Verifies the provided OTP (One-Time Password) against the expected OTP using the TOTP algorithm.
+     * This method checks the OTP for the current time and up to 3 intervals before and after.
+     *
+     * @param base64Secret the base64 encoded secret key for generating the OTP.
+     * @param otp the OTP provided by the user.
+     * @return true if the OTP is valid; false otherwise.
+     */
     private static boolean verifyTOTP(String base64Secret, String otp) {
         try {
             byte[] key = Base64.getDecoder().decode(base64Secret);
