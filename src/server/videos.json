@@ -5,6 +5,12 @@
          "videoCategory" : "cartoon",
          "videoName" : "cp",
          "videoAgeRating" : "pg-13"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Donald's Decision (1942).mp4.enc",
+         "videoCategory" : "disney",
+         "videoName" : "donald",
+         "videoAgeRating" : "pg"
       }
    ]
 }
