@@ -3,19 +3,20 @@ package common.protocol.messages;
 import merrimackutil.json.types.*;
 import common.protocol.Message;
 import java.io.InvalidObjectException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SearchResponseMessage implements Message {
-    private List<String> files = new ArrayList<>();
+    private List<VideoInfo> files = new ArrayList<>();
 
     public SearchResponseMessage() {}
 
-    public SearchResponseMessage(List<String> files) {
+    public SearchResponseMessage(List<VideoInfo> files) {
         this.files = files;
     }
 
-    public List<String> getFiles() {
+    public List<VideoInfo> getFiles() {
         return files;
     }
 
@@ -28,7 +29,14 @@ public class SearchResponseMessage implements Message {
         JSONArray arr = (JSONArray) json.get("files");
         files = new ArrayList<>();
         for (int i = 0; i < arr.size(); i++) {
-            files.add(arr.getString(i)); 
+            JSONObject fileObj = (JSONObject) arr.get(i);
+            VideoInfo video = new VideoInfo(
+                fileObj.getString("encryptedPath"),
+                fileObj.getString("videoCategory"),
+                fileObj.getString("videoName"),
+                fileObj.getString("videoAgeRating")
+            );
+            files.add(video);
         }
     }
 
@@ -36,8 +44,13 @@ public class SearchResponseMessage implements Message {
     public JSONType toJSONType() {
         JSONObject obj = new JSONObject();
         JSONArray arr = new JSONArray();
-        for (String file : files) {
-            arr.add(file); 
+        for (VideoInfo file : files) {
+            JSONObject fileObj = new JSONObject();
+            fileObj.put("encryptedPath", file.encryptedPath());
+            fileObj.put("videoCategory", file.videoCategory());
+            fileObj.put("videoName", file.videoName());
+            fileObj.put("videoAgeRating", file.videoAgeRating());
+            arr.add(fileObj);
         }
         obj.put("type", "SearchResponse");
         obj.put("files", arr);
@@ -59,5 +72,11 @@ public class SearchResponseMessage implements Message {
     @Override
     public String toString() {
         return "[SearchResponseMessage] files=" + files;
+    }
+
+    public static record VideoInfo(String encryptedPath, String videoCategory, String videoName, String videoAgeRating) {
+        public VideoInfo(Path encryptedPath, String videoCategory, String videoName, String videoAgeRating) {
+            this(encryptedPath.toString(), videoCategory, videoName, videoAgeRating);
+        }
     }
 }
