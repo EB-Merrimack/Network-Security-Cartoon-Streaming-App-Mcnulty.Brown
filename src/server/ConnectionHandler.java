@@ -41,7 +41,8 @@ import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.DownloadRequestMessage;
 import common.protocol.messages.DownloadResponseMessage;
-
+import common.protocol.messages.SearchRequestMessage;
+import common.protocol.messages.SearchResponseMessage;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.User;
@@ -160,6 +161,11 @@ public class ConnectionHandler implements Runnable {
             handleDownloadRequest((DownloadRequestMessage) msg);
             continue; // Continue waiting for the next message
         }
+         else if(msg.getType().equals("SearchRequest")) {
+             
+                handleSearchRequest((SearchRequestMessage) msg);
+                return; 
+            }
          else {
             System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
         }
@@ -171,7 +177,86 @@ public class ConnectionHandler implements Runnable {
 }
 
             
-       
+         private void handleSearchRequest(SearchRequestMessage msg) {
+        // 1. Load the full video database
+        List<Video> allVideos = videodatabase.getAllVideos();  
+        
+    
+        // 2. Extract search fields
+        String encryptedPath = msg.getEncryptedPath();
+        String videoCategory = msg.getVideoCategory();
+        String videoName = msg.getVideoName();
+        String videoAgeRating = msg.getVideoAgeRating();
+    
+        // 3. Filter matching videos
+        List<SearchResponseMessage.VideoInfo> matchingFiles = new ArrayList<>();
+        for (Video video : allVideos) {
+            boolean matches = false; // Start assuming it doesn't match
+    
+          
+    
+            // FIRST CHECK: Encrypted Path
+            if (encryptedPath == null || encryptedPath.equals("null") || encryptedPath.equals(video.getEncryptedPath())) {
+                
+                matches = true;
+               
+            } else {
+                matches = false;
+            }
+    
+            // Only continue checking other fields if first check passed
+            if (matches) {
+                // Video Category
+                if (videoCategory == null  || videoCategory.equals("null") || videoCategory.equals(video.getVideoCategory())) {
+                    matches = true;
+                  
+                }
+                else {
+                    matches = false;
+                }
+            }
+                // Video Name
+                if (matches){
+                if (videoName == null || videoName.equals("null") || videoName.equals(video.getVideoName())) {
+                    matches = true;
+                 
+                }
+                else {
+                    matches = false;
+                }
+            }
+            if (matches) {
+                
+            
+                // Video Age Rating
+                if (videoAgeRating == null || videoAgeRating.equals("null") || videoAgeRating.equals(video.getVideoAgeRating())) {
+                    matches = true;
+                    
+                }
+                else {
+                    matches = false;
+                }
+            }
+    
+            if (matches) {
+                // All checks passed, add to result
+                SearchResponseMessage.VideoInfo info = new SearchResponseMessage.VideoInfo(
+                    video.getEncryptedPath(),
+                    video.getVideoCategory(),
+                    video.getVideoName(),
+                    video.getVideoAgeRating()
+                );
+                matchingFiles.add(info);
+              
+            } 
+        }
+    
+      
+        // 4. Send the SearchResponseMessage
+        SearchResponseMessage response = new SearchResponseMessage(matchingFiles);
+
+        channel.sendMessage(response);
+    }
 
     private void handleAdminInsertVideoRequest(Message msg) throws Exception {
         if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
