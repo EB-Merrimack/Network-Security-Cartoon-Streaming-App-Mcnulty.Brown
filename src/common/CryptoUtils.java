@@ -6,7 +6,6 @@ import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.Security;
 import java.security.KeyFactory;
 import java.security.spec.X509EncodedKeySpec;

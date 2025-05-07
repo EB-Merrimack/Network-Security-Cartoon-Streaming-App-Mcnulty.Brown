@@ -21,7 +21,6 @@ import merrimackutil.json.JsonIO;
 import java.net.Socket;
 import java.util.Scanner;
 
-import common.protocol.messages.StatusMessage;
 
 import java.io.PrintWriter;
 import java.io.InvalidObjectException;

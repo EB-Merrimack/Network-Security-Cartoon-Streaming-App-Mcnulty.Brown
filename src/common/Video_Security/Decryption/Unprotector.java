@@ -2,13 +2,11 @@ package common.Video_Security.Decryption;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import server.Configuration;
 import common.CryptoUtils;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Base64;
 
 public class Unprotector {
