@@ -37,12 +37,27 @@ public class SearchRequestMessage implements Message {
         return videoAgeRating;
     }
 
+    public void setEncryptedPath(String encryptedPath) {
+        this.encryptedPath = encryptedPath;
+    }
+
+    public void setVideoCategory(String videoCategory) {
+        this.videoCategory = videoCategory;
+    }
+
+    public void setVideoName(String videoName) {
+        this.videoName = videoName;
+    }
+
+    public void setVideoAgeRating(String videoAgeRating) {
+        this.videoAgeRating = videoAgeRating;
+    }
+
     @Override
     public void deserialize(JSONType obj) throws InvalidObjectException {
-        if (!(obj instanceof JSONObject)) {
+        if (!(obj instanceof JSONObject json)) {
             throw new InvalidObjectException("Expected JSONObject");
         }
-        JSONObject json = (JSONObject) obj;
         this.encryptedPath = json.getString("encryptedPath");
         this.videoCategory = json.getString("videoCategory");
         this.videoName = json.getString("videoName");
@@ -78,25 +93,5 @@ public class SearchRequestMessage implements Message {
                ", VideoCategory=" + videoCategory +
                ", VideoName=" + videoName +
                ", VideoAgeRating=" + videoAgeRating;
-    }
-
-    public void setEncryptedPath(String encryptedPath2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setEncryptedPath'");
-    }
-
-    public void setVideoCategory(String videoCategory2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setVideoCategory'");
-    }
-
-    public void setVideoName(String videoName2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setVideoName'");
-    }
-
-    public void setVideoAgeRating(String videoAgeRating2) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'setVideoAgeRating'");
     }
 }

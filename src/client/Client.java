@@ -33,6 +33,9 @@ import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
 import merrimackutil.codec.Base32;
 import merrimackutil.util.Tuple;
+import server.Video.Video;
+import server.Video.videodatabase;
+
 import java.awt.Desktop;
 
 /**
@@ -206,20 +209,21 @@ public class Client {
 
         Message response = channel.receiveMessage();
         if (response instanceof SearchResponseMessage) {
-            List<String> files = ((SearchResponseMessage) response).getFiles();
+            List<SearchResponseMessage.VideoInfo> files = ((SearchResponseMessage) response).getFiles();
             if (files.isEmpty()) {
                 System.out.println("No matching content found.");
             } else {
                 System.out.println("Search results:");
-                for (String file : files) {
-                    System.out.println(" - " + file);
+                for (SearchResponseMessage.VideoInfo file : files) {
+                    System.out.println(" - Name: " + file.videoName());
+                    System.out.println("   Category: " + file.videoCategory());
+                    System.out.println("   Age Rating: " + file.videoAgeRating());
+                    System.out.println("   Encrypted Path: " + file.encryptedPath());
+                    System.out.println();
                 }
             }
-        } else if (response instanceof StatusMessage) {
-            System.out.println("[ERROR] " + ((StatusMessage) response).getPayload());
-        } else {
-            System.out.println("[ERROR] Unexpected response: " + response);
         }
+
 
         channel.closeChannel();
     }
@@ -384,9 +388,11 @@ public class Client {
             System.out.println();
             System.out.println("========= VIDEO PORTAL =========");
             System.out.println("Welcome, " + user + "! What would you like to do?");
-            System.out.println("[1] Search for videos");
-            System.out.println("[2] Download a video");
-            System.out.println("[3] Exit");
+            System.out.println("[1] View all videos");
+            System.out.println("[2] Search for videos");
+
+            System.out.println("[3] Download a video");
+            System.out.println("[4] Exit");
             System.out.print("Choice: ");
     
             String choice = scanner.nextLine().trim();
@@ -394,37 +400,52 @@ public class Client {
             switch (choice) {
                 case "1":
                 checkAuthentication(); // <<< check if session timed out
-                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
+                // Perform the search without user input
+                search(null, null, null, null);
+                break;
                 
+            case "2":
+                checkAuthentication(); // <<< check if session timed out
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
+            
                 // Ask for Encrypted Path
-                clearConsole();
                 System.out.print("Encrypted Path: ");
                 String encryptedPath = scanner.nextLine().trim();
-                if (encryptedPath.isEmpty()) encryptedPath = "null";
-                
-                // Ask for Video Category
+                if (encryptedPath.isEmpty() || encryptedPath.equalsIgnoreCase("null")) encryptedPath = null;
                 clearConsole();
+            
+                // Ask for Video Category
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
                 System.out.print("Video Category: ");
                 String videoCategory = scanner.nextLine().trim();
-                if (videoCategory.isEmpty()) videoCategory = "null";
-                
-                // Ask for Video Name
+                if (videoCategory.isEmpty() || videoCategory.equalsIgnoreCase("null")) videoCategory = null;
                 clearConsole();
+            
+                // Ask for Video Name
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
                 System.out.print("Video Name: ");
                 String videoName = scanner.nextLine().trim();
-                if (videoName.isEmpty()) videoName = "null";
-                
-                // Ask for Video Age Rating
+                if (videoName.isEmpty() || videoName.equalsIgnoreCase("null")) videoName = null;
                 clearConsole();
+            
+                // Ask for Video Age Rating
+                System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
                 System.out.print("Video Age Rating: ");
                 String videoAgeRating = scanner.nextLine().trim();
-                if (videoAgeRating.isEmpty()) videoAgeRating = "null";
-                
+                if (videoAgeRating.isEmpty() || videoAgeRating.equalsIgnoreCase("null")) videoAgeRating = null;
+                clearConsole();
+            
+                System.out.println("Searching..." + "\n" +
+                                   "Encrypted Path: " + encryptedPath + "\n" +
+                                   "Video Category: " + videoCategory + "\n" +
+                                   "Video Name: " + videoName + "\n" +
+                                   "Video Age Rating: " + videoAgeRating);
+            
                 // After collecting all inputs, you can now perform the search
                 search(encryptedPath, videoCategory, videoName, videoAgeRating);
-                
-                    break;
-                case "2":
+                break;
+            
+                case "3":
                     checkAuthentication(); // <<< add this
                     Scanner downloadscanner=new Scanner(System.in);
                     System.out.print("Enter filename to download: ");
@@ -437,13 +458,13 @@ public class Client {
                 
                     break;
     
-                case "3":
+                case "4":
                     System.out.println("Goodbye, " + user + "!");
                     System.exit(0);
                     break;
     
                 default:
-                    System.out.println("[ERROR] Invalid option. Please choose 1, 2, or 3.");
+                    System.out.println("[ERROR] Invalid option. Please choose 1, 2, 3 or 4.");
                     break;
             }
         }

@@ -230,12 +230,17 @@ public class adminclient {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         // Collect video information from the user
-        System.out.print("Enter video name (or '1' to set it to null): ");
+        System.out.print("Enter video name : ");
         String videoname = reader.readLine().trim();
-        if (videoname.equals("1") || videoname.isEmpty()) {
-            videoname = null;
-        }
-        clearConsole();
+
+// Keep asking until a valid video name is entered this is primary key and is assumed to be unique as admin have to upload only one video
+while (videoname.equals("1") || videoname.isEmpty()) {
+    System.out.println("Invalid video name. Please enter a valid name:");
+    videoname = reader.readLine().trim();
+}
+
+clearConsole();
+// Now videoname is guaranteed to be non-null and not empty/"1"
 
         System.out.print("Enter video category (or '1' to set it to null): ");
         String category = reader.readLine().trim();

@@ -10,6 +10,7 @@ import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
@@ -34,7 +35,8 @@ import common.protocol.messages.AdminInsertVideoRequest;
 import common.protocol.messages.AuthenticateMessage;
 import common.protocol.messages.DownloadRequestMessage;
 import common.protocol.messages.DownloadResponseMessage;
-import common.protocol.messages.PubKeyRequest;
+import common.protocol.messages.SearchRequestMessage;
+import common.protocol.messages.SearchResponseMessage;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
 import common.protocol.user_auth.UserDatabase;
@@ -69,7 +71,7 @@ public class ConnectionHandler implements Runnable {
         this.channel.addMessageType(new common.protocol.messages.DownloadRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchRequestMessage());
         this.channel.addMessageType(new common.protocol.messages.SearchResponseMessage());
-        this.channel.addMessageType(new common.protocol.messages.PubKeyRequest());
+
         this.channel.addMessageType(new AuthenticateMessage());
         this.channel.addMessageType(new AdminAuth());
        
@@ -141,18 +143,6 @@ public class ConnectionHandler implements Runnable {
                     return;
                 }
                 
-            }else if (msg.getType().equals("PubKeyRequest")) {
-                System.out.println("[SERVER] Received PubKeyRequest.");
-            
-                PubKeyRequest pubKeyRequest = (PubKeyRequest) msg;
-                String username = pubKeyRequest.getUser();  // Use getUser() here
-                System.out.println("[SERVER] Public key requested for user: " + username);
-            
-                String base64Key = UserDatabase.getEncodedPublicKey(username) ;  // You might want to change this to take a username
-                System.out.println("[SERVER] Sending public key (Base64): " + base64Key);
-            
-                channel.sendMessage((Message) new StatusMessage(true, base64Key));
-                System.out.println("[SERVER] Public key sent.");
             }
             else if (msg.getType().equals("AdminInsertVideoRequest")) {
                 System.out.println("[SERVER] Received AdminInsertVideoRequest.");
@@ -163,6 +153,11 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[SERVER] Received DownloadRequest.");
                 handleDownloadRequest((DownloadRequestMessage) msg);
                 continue; // Continue waiting for the next message
+            }
+            else if(msg.getType().equals("SearchRequest")) {
+                System.out.println("[SERVER] Received SearchRequest.");
+                handleSearchRequest((SearchRequestMessage) msg);
+                return; 
             }
             else {
                 System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
@@ -175,6 +170,92 @@ public class ConnectionHandler implements Runnable {
     }
 
             
+    private void handleSearchRequest(SearchRequestMessage msg) {
+        // 1. Load the full video database
+        List<Video> allVideos = videodatabase.getAllVideos();  
+        System.out.println("[SERVER] Received SearchRequest.");
+        System.out.println("Searching through all videos: " + allVideos.size());
+    
+        // 2. Extract search fields
+        String encryptedPath = msg.getEncryptedPath();
+        String videoCategory = msg.getVideoCategory();
+        String videoName = msg.getVideoName();
+        String videoAgeRating = msg.getVideoAgeRating();
+    
+        // 3. Filter matching videos
+        List<SearchResponseMessage.VideoInfo> matchingFiles = new ArrayList<>();
+        for (Video video : allVideos) {
+            boolean matches = false; // Start assuming it doesn't match
+    
+            System.out.println("Evaluating video: " + video.getVideoName());
+    
+            // FIRST CHECK: Encrypted Path
+            if (encryptedPath == null || encryptedPath.equals("null") || encryptedPath.equals(video.getEncryptedPath())) {
+                
+                matches = true;
+                System.out.println("Encrypted path matches or not provided.");
+            } else {
+                System.out.println("Encrypted path does not match, skipping video.");
+            }
+    
+            // Only continue checking other fields if first check passed
+            if (matches) {
+                // Video Category
+                if (videoCategory == null  || videoCategory.equals("null") || videoCategory.equals(video.getVideoCategory())) {
+                    matches = true;
+                    System.out.println("Category does not match, skipping video.");
+                }
+            }
+                // Video Name
+                if (matches){
+                if (videoName == null || videoName.equals("null") || videoName.equals(video.getVideoName())) {
+                    matches = true;
+                    System.out.println("Name does not match, skipping video.");
+                }
+            }
+            if (matches) {
+                
+            
+                // Video Age Rating
+                if (videoAgeRating == null || videoAgeRating.equals("null") || videoAgeRating.equals(video.getVideoAgeRating())) {
+                    matches = true;
+                    System.out.println("Age rating does not match, skipping video.");
+                }
+            }
+    
+            if (matches) {
+                // All checks passed, add to result
+                SearchResponseMessage.VideoInfo info = new SearchResponseMessage.VideoInfo(
+                    video.getEncryptedPath(),
+                    video.getVideoCategory(),
+                    video.getVideoName(),
+                    video.getVideoAgeRating()
+                );
+                matchingFiles.add(info);
+                System.out.println("Match found and added: " + video.getVideoName());
+            } else {
+                System.out.println("Video did not match.");
+            }
+        }
+    
+        // Final output
+        System.out.println("Matching files: ");
+        for (SearchResponseMessage.VideoInfo info : matchingFiles) {
+            System.out.println(" - " + info.videoName());
+        }
+    
+        // 4. Send the SearchResponseMessage
+        SearchResponseMessage response = new SearchResponseMessage(matchingFiles);
+        System.out.println("[SERVER] Sending SearchResponseMessage.");
+        channel.sendMessage(response);
+    }
+    
+    
+    
+    
+    
+    
+
     /**
      * Handles the request to insert a video into the system. This method first verifies if the admin file is valid.
      * If the user is an admin, it encrypts the video, saves it, and inserts it into the video database.
