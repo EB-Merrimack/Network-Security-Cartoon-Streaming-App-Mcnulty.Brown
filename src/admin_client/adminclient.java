@@ -199,7 +199,6 @@ public class adminclient {
         // Send the authentication message
         AdminAuth authMsg = new AdminAuth(user, password, otp);
         channel.sendMessage(authMsg);
-        System.out.println("[INFO] Sent authentication message.");
 
         // Receive the response from the server
         Message response = channel.receiveMessage();
@@ -255,11 +254,9 @@ public class adminclient {
         AdminInsertVideoRequest request = new AdminInsertVideoRequest(user, videofile, videoname, category, agerating);
         channel.sendMessage(request);
 
-        System.out.println("[INFO] Video upload request sent: " + videofile);
 
         // Wait for server acknowledgment
         Message resp = channel.receiveMessage();
-        System.out.println("[DEBUG] Received response: " + (resp != null ? resp.getType() : "null"));
 
         // Check the response
         if (resp instanceof StatusMessage) {
