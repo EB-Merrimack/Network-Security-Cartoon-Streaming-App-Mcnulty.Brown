@@ -388,6 +388,10 @@ public class Client {
     
             switch (choice) {
                 case "1":
+                search(null, null, null, null);
+                break;
+                case "2":
+                
                 checkAuthentication(); //check if session timed out
                 System.out.println("Enter search values for each field. If you don't want to search a field, type 'null' or press Enter.");
             

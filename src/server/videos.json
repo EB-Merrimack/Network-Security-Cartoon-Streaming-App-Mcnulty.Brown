@@ -11,6 +11,12 @@
          "videoCategory" : "disney",
          "videoName" : "donald",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/Mickey's Surprise Party (1939).mp4.enc",
+         "videoCategory" : "disney",
+         "videoName" : "Mickey's surprise party",
+         "videoAgeRating" : "pg"
       }
    ]
 }
