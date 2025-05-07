@@ -1,5 +1,6 @@
 # Video Security Application
 ## By Erin Mcnulty and Emily Brown
+## procedure sheet: https://docs.google.com/document/d/1P6NctRW5KSA53ahyM5wbFz-QUuS__rqUVFzkzWRZ7ME/edit?tab=t.0
 
 ## Overview
 
