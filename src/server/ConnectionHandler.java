@@ -129,7 +129,7 @@ public class ConnectionHandler implements Runnable {
             return;
         }
             else if (msg.getType().equals("AdminAuth")) {
-                System.out.println("[SERVER] Received AdminAuth.");
+               
                 boolean success = AdminAuthenticator.authenticate((AdminAuth) msg);
 
                 if (success) {
@@ -142,12 +142,12 @@ public class ConnectionHandler implements Runnable {
                 
             }
             else if (msg.getType().equals("AdminInsertVideoRequest")) {
-                System.out.println("[SERVER] Received AdminInsertVideoRequest.");
+                
                 // Handle AdminInsertVideoRequest
                 handleAdminInsertVideoRequest(msg);
                 return;
             } else if (msg.getType().equals("DownloadRequest")) {
-                System.out.println("[SERVER] Received DownloadRequest.");
+                
                 handleDownloadRequest((DownloadRequestMessage) msg);
                 continue; // Continue waiting for the next message
             }

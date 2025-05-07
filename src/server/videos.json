@@ -1,0 +1,11 @@
+{
+   "videos" : [
+      {
+         "encryptedPath" : "src/server/cartoons/ComiColor_ Simple Simon.mp4.enc",
+         "videoCategory" : "cartoon",
+         "videoName" : "cp",
+         "videoAgeRating" : "pg-13"
+      }
+   ]
+}
+
