@@ -195,7 +195,7 @@ public class ConnectionHandler implements Runnable {
                 matches = true;
                 System.out.println("Encrypted path matches or not provided.");
             } else {
-                System.out.println("Encrypted path does not match, skipping video.");
+                matches = false;
             }
     
             // Only continue checking other fields if first check passed
@@ -205,12 +205,18 @@ public class ConnectionHandler implements Runnable {
                     matches = true;
                     System.out.println("Category does not match, skipping video.");
                 }
+                else {
+                    matches = false;
+                }
             }
                 // Video Name
                 if (matches){
                 if (videoName == null || videoName.equals("null") || videoName.equals(video.getVideoName())) {
                     matches = true;
                     System.out.println("Name does not match, skipping video.");
+                }
+                else {
+                    matches = false;
                 }
             }
             if (matches) {
@@ -220,6 +226,9 @@ public class ConnectionHandler implements Runnable {
                 if (videoAgeRating == null || videoAgeRating.equals("null") || videoAgeRating.equals(video.getVideoAgeRating())) {
                     matches = true;
                     System.out.println("Age rating does not match, skipping video.");
+                }
+                else {
+                    matches = false;
                 }
             }
     
