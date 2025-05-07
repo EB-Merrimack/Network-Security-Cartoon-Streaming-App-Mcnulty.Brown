@@ -2,7 +2,6 @@ package common.protocol.user_creation;
 
 import merrimackutil.json.types.JSONObject;
 import merrimackutil.json.types.JSONType;
-import merrimackutil.json.JSONSerializable;
 import common.protocol.Message;
 
 import java.io.InvalidObjectException;

@@ -7,9 +7,7 @@ package root_user;
 
 /* To compile, run in terminal: ava -jar .\dist\root_user.jar after compiling the root_user using the compile and dist build */
 
-import merrimackutil.json.types.JSONObject;
 import server.Admin.Admin;
-import merrimackutil.json.JSONSerializable;
 import merrimackutil.json.JsonIO;
 import java.io.File;
 import java.io.FileWriter;

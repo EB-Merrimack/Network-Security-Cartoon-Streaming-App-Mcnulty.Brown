@@ -7,24 +7,18 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Base64.Decoder;
 
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-import server.Configuration;
 import server.Admin.Admin;
-import server.Admin.AdminAuthenticator;
 import server.Admin.AdminAuthenticator;
 import server.Admin.AdminVerifier;
 import server.Video.Video;
@@ -45,7 +39,6 @@ import common.protocol.messages.SearchRequestMessage;
 import common.protocol.messages.SearchResponseMessage;
 import common.protocol.messages.StatusMessage;
 import common.protocol.user_auth.AuthenticationHandler;
-import common.protocol.user_auth.User;
 import common.protocol.user_auth.UserDatabase;
 import merrimackutil.util.NonceCache;
 
@@ -108,22 +101,18 @@ public class ConnectionHandler implements Runnable {
       private void runCommunication() {
         try {
             while (true) {
-                System.out.println("[DEBUG] Waiting to receive a message...");
                 
                 Message msg = null;
     
                 try {
                     // Try to receive the message
                     msg = channel.receiveMessage();
-                    System.out.println("[DEBUG] Received message of type: " + msg.getType());
                 } catch (NullPointerException e) {
                     // If a NullPointerException occurs, log it and continue waiting for the next message
                     System.err.println("[ERROR] NullPointerException encountered while receiving message.");
-                    System.err.println("[DEBUG] Received message: " + msg);
                     // You can decide whether to break out of the loop or continue waiting
                     continue; // Continue waiting for the next message
                 }
-                System.out.println("[DEBUG] Received message: " + msg);
             if (msg.getType().equals("create-account")) {
                 System.out.println("[SERVER] Received CreateMessage.");
                 // Handle CreateMessage 
@@ -152,32 +141,38 @@ public class ConnectionHandler implements Runnable {
             }
             
         }
-        else if (msg.getType().equals("AdminInsertVideoRequest")) {
-            System.out.println("[SERVER] Received AdminInsertVideoRequest.");
-            // Handle AdminInsertVideoRequest
-            handleAdminInsertVideoRequest(msg);
-            return;
-        } else if (msg.getType().equals("DownloadRequest")) {
-            System.out.println("[SERVER] Received DownloadRequest.");
-            handleDownloadRequest((DownloadRequestMessage) msg);
-            continue; // Continue waiting for the next message
-        }
-         else if(msg.getType().equals("SearchRequest")) {
-             
-                handleSearchRequest((SearchRequestMessage) msg);
-                return; 
+            else if (msg.getType().equals("AdminInsertVideoRequest")) {
+                System.out.println("[SERVER] Received AdminInsertVideoRequest.");
+                // Handle AdminInsertVideoRequest
+                handleAdminInsertVideoRequest(msg);
+                return;
+            } else if (msg.getType().equals("DownloadRequest")) {
+                System.out.println("[SERVER] Received DownloadRequest.");
+                handleDownloadRequest((DownloadRequestMessage) msg);
+                continue; // Continue waiting for the next message
             }
-         else {
-            System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
+            else if(msg.getType().equals("SearchRequest")) {
+                
+                    handleSearchRequest((SearchRequestMessage) msg);
+                    return; 
+                }
+            else {
+                System.out.println("[SERVER] Unknown or unsupported message type: " + msg.getType());
+            }
+
         }
-
+    }catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
-}catch (Exception ex) {
-        ex.printStackTrace();
-    }
-}
 
-            
+    /**
+     * Processes a video search request.
+     * Filters the available videos in the database based on optional
+     * search criteria: encrypted path, category, name, and age rating.
+     *
+     * @param msg the {@link SearchRequestMessage} containing search criteria.
+     */
          private void handleSearchRequest(SearchRequestMessage msg) {
         // 1. Load the full video database
         List<Video> allVideos = videodatabase.getAllVideos();  
@@ -259,6 +254,14 @@ public class ConnectionHandler implements Runnable {
         channel.sendMessage(response);
     }
 
+    /**
+     * Handles a request to insert a new video into the server's database.
+     * Verifies the admin file, ensures the user is authorized as an admin,
+     * encrypts the video content, and inserts metadata into the database.
+     *
+     * @param msg the {@link AdminInsertVideoRequest} containing video details.
+     * @throws Exception if an error occurs during verification or encryption.
+     */
     private void handleAdminInsertVideoRequest(Message msg) throws Exception {
         if (!AdminVerifier.verifyAdminFile(Configuration.getAdminFile())) {
             System.err.println("SECURITY ERROR: admin.json failed verification! Server shutting down.");

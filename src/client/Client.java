@@ -33,9 +33,6 @@ import merrimackutil.cli.LongOption;
 import merrimackutil.cli.OptionParser;
 import merrimackutil.codec.Base32;
 import merrimackutil.util.Tuple;
-import server.Video.Video;
-import server.Video.videodatabase;
-
 import java.awt.Desktop;
 
 /**
