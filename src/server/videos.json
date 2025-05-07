@@ -23,6 +23,12 @@
          "videoCategory" : "null",
          "videoName" : "all together",
          "videoAgeRating" : "pg"
+      },
+      {
+         "encryptedPath" : "src/server/cartoons/The Mad Doctor (1933).mp4.enc",
+         "videoCategory" : "disney",
+         "videoName" : "mad doc",
+         "videoAgeRating" : "pg-13"
       }
    ]
 }
