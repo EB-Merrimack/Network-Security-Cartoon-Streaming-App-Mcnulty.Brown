@@ -274,6 +274,8 @@ public class ConnectionHandler implements Runnable {
                 System.out.println("[SERVER] Handling DownloadRequest.");
                 String requestedFile = msg.getFilename();
                 String user = msg.getUsername();
+                String savePath = msg.getSavePath();
+                System.out.println("[SERVER] Save Path: " + savePath);
         
                 System.out.println("[SERVER] User " + user + " requested file: " + requestedFile);
         
@@ -338,31 +340,56 @@ public class ConnectionHandler implements Runnable {
                 elgCipher.init(Cipher.ENCRYPT_MODE, userPubKey);
                 byte[] encryptedSessionKey = elgCipher.doFinal(sessionKeyBytes);
         
-                // 6. Send the encrypted video, encrypted key, and IV to the client
+                System.out.println("[SERVER] Encrypted session key: " + Base64.getEncoder().encodeToString(encryptedSessionKey));
+        
                 DownloadResponseMessage response = new DownloadResponseMessage(
-                    Base64.getEncoder().encodeToString(reEncrypted),
                     target.getVideoCategory(),
                     target.getVideoName(),
                     target.getVideoAgeRating(),
                     Base64.getEncoder().encodeToString(encryptedSessionKey),
-                    Base64.getEncoder().encodeToString(iv)
+                    Base64.getEncoder().encodeToString(iv),
+                    savePath
                 );
+                
         
-                System.out.println("[SERVER] Sent encrypted video to user.");
-                channel.sendMessage(response);
-                System.out.println("[SERVER] Sent encrypted video to user.");
-                Files.deleteIfExists(decryptedPath); // cleanup
-                System.out.println("Cleaned up");
+               
+               
+        // Extract file name from the given savePath and change extension to .enc
+        Path originalFilePath = Path.of(savePath);
+        String fileNameWithoutExtension = getFileNameWithoutExtension(originalFilePath);
         
-            } catch (Exception e) {
-                System.err.println("[SERVER ERROR] " + e.getMessage());
-                e.printStackTrace();
-                try {
-                    channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
-                } catch (Exception ignored) {}
-            }
-        }
+        // Create a new path with the .enc extension, keeping the same file name
+        Path outputPath = originalFilePath.getParent().resolve(fileNameWithoutExtension + ".enc").toAbsolutePath();
         
-    
-    
+        // Ensure the parent directories exist
+        Files.createDirectories(outputPath.getParent());
+        
+        // Write the re-encrypted file to the specified output path
+        Files.write(outputPath, reEncrypted);
+        System.out.println("[SERVER] Saved re-encrypted video to: " + outputPath.toAbsolutePath());
+
+       // Send response to client with the file save location
+       channel.sendMessage(response);
+        Files.deleteIfExists(decryptedPath); // Cleanup
+        System.out.println("[SERVER] Cleaned up temporary decrypted file.");
+
+    } catch (Exception e) {
+        System.err.println("[SERVER ERROR] " + e.getMessage());
+        e.printStackTrace();
+        try {
+            channel.sendMessage(new StatusMessage(false, "Download failed: " + e.getMessage()));
+        } catch (Exception ignored) {}
+    }
+}
+// Helper function to get the file name without extension
+private String getFileNameWithoutExtension(Path path) {
+    String fileName = path.getFileName().toString();
+    int extensionIndex = fileName.lastIndexOf('.');
+    if (extensionIndex > 0) {
+        return fileName.substring(0, extensionIndex);
+    } else {
+        return fileName;  // No extension found, return the whole filename
+    }
+}
+
 }
